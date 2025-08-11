@@ -1,0 +1,10 @@
+# Ignore artifacts:
+node_modules/**
+public/**
+dist/**
+
+.prettierrc
+eslint.config.mjs
+#coverage
+**/*.json
+**/*.md
