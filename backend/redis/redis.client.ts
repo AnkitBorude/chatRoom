@@ -1,4 +1,4 @@
-import { createClient } from "redis";
+import { createClient} from "redis";
 
 export class RedisClient {
   //here using the redisClient type really made my machine very slow because of deep nested
