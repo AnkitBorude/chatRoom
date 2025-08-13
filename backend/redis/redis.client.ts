@@ -1,6 +1,6 @@
-import { createClient} from "redis";
+import { createClient, RedisClientType} from "redis";
 
-export class RedisClient {
+export class RedisClientWrapper {
   //here using the redisClient type really made my machine very slow because of deep nested
   //overloading and types
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -10,6 +10,7 @@ export class RedisClient {
   isRedisHealthy: boolean = false;
   private RETRY: number = 5;
   private _name: string = "default";
+
   constructor(name?: string) {
     if (name) {
       this._name = name;
@@ -38,15 +39,8 @@ export class RedisClient {
     }
   }
 
-  public get name() {
-    return this._name;
-  }
-
-  set name(name: string) {
-    this._name = name;
-  }
-
-  public async connect() {
+ 
+  public async connect() : Promise< undefined | RedisClientType>{
     if (this.client.isOpen) {
       console.log("Already Open Connection NAME: " + this._name);
       return;
@@ -60,6 +54,14 @@ export class RedisClient {
     } catch (error) {
       this.handleError(error as Error);
     }
+  }
+
+   public get name() {
+    return this._name;
+  }
+
+  set name(name: string) {
+    this._name = name;
   }
 
   private startHeartbeat(interval:number){
