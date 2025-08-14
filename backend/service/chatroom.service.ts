@@ -47,6 +47,8 @@ export class RoomManager {
     message: "Welcome to server",
     }
     );
+    //attach event handler here to listen for 
+    //close event 
     // client.ws.on("close", () => {
     //   this.removeClient(ws);
     // });
