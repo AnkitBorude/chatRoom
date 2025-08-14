@@ -1,27 +1,20 @@
-import { clientType } from "backend/types";
+import { Client } from "backend/types";
 import { RedisClientType } from "redis";
+import { RedisUtil } from "./redis.util";
 
-export class RedisHelper{
-    redisClient:RedisClientType;
-    private CLIENT_KEY_INITIALIZER='client:<id>';
-    constructor(redisClient:RedisClientType)
-    {
-        this.redisClient=redisClient;
-    }
+export class RedisHelper {
+  redisClient: RedisClientType;
+  redisUtil:RedisUtil;
+  constructor(redisClient: RedisClientType) {
+    this.redisClient = redisClient;
+    this.redisUtil=new RedisUtil();
+  }
 
-    public async createNewClient(id:number,name:string)
-    {
-        const key=this.getClientkey(id);
-        const clientMeta:clientType={
-            id,name,
-            createdAt:new Date(),
-            roomId:0
-        }
-        await this.redisClient.hSet(key,clientMeta);
-    }
+  public async createNewClient(client: Client) {
+    const key = this.redisUtil.getClientkey(client.id);
+    const stringiFied_client=this.redisUtil.stringifyObject(client);
+    await this.redisClient.hSet(key,stringiFied_client);
+  }
+  
 
-    private getClientkey(key:number)
-    {
-        return this.CLIENT_KEY_INITIALIZER.replace('<id>',key.toString())
-    }
 }

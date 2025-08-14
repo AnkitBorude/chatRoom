@@ -1,34 +1,63 @@
 import http from "http";
 import { RedisClientType } from "redis";
 import WebSocket from "ws";
-import crypto from "crypto";
-export class ChatRoomWebsocket{
-    private client:RedisClientType;
-    private subscriber:RedisClientType;
-    private websocketServer:WebSocket.Server;
+import { RoomManager } from "./service/chatroom.service";
+export class ChatRoomWebsocket {
+  private websocketServer: WebSocket.Server;
+  private roomManager: RoomManager;
+  constructor(
+    server: http.Server,
+    client: RedisClientType,
+    subscriber: RedisClientType,
+  ) {
+    this.websocketServer = new WebSocket.Server({ server });
+    this.roomManager = new RoomManager(client, subscriber);
+  }
 
-    constructor(server:http.Server,client:RedisClientType,subscriber:RedisClientType)
-    {
-        this.client=client;
-        this.websocketServer=new WebSocket.Server({server});
-        this.subscriber=subscriber;
-    }
+  public initialize() {
+    this.websocketServer.on("connection", (websocket) => {
+      // Client connected to server
+      this.roomManager.createClient(websocket);
+      // websocket.on('message',(incomingMessage)=>this.incomingMessageHandlers(incomingMessage.toString('utf-8'),websocket));
+    });
 
-    public initialize()
-    {
-        // this.websocketServer.on('connection',(websocket)=>{
-        //     //Client connected to server
-        //     // websocket.on('message',(incomingMessage)=>this.messageHandlers(incomingMessage));
-        // });
+    this.websocketServer.on("error", (error) => {
+      console.log("Something went wrong with websocket " + error.message);
+    });
+  }
 
-        this.websocketServer.on('error',(error)=>{
-            console.log("Something went wrong with websocket "+error.message);
-        })
-    }
+  // private incomingMessageHandlers(message:string,websocket:WebSocket)
+  // {
+  //     let parsedObj:BaseMessage;
+  //     try {
+  //         parsedObj = JSON.parse(message) as BaseMessage;
+  //     } catch (error) {
+  //         const errora = error as Error;
+  //         console.error(error);
+  //         websocket.send("Server Error " + errora.name);
+  //         return;
+  // }
 
-    private generateNewClientId()
-    {
-        return crypto.randomInt(10000,99999);
-    }
-
+  // switch (parsedObj.type) {
+  //   case RequestType.CREATE:
+  //     roomService.createRoom(websocket, (parsedObj as CreateMessage).roomName);
+  //     break;
+  //   case RequestType.JOIN:
+  //     roomService.joinRoom(websocket, (parsedObj as JoinMessage).roomId);
+  //     break;
+  //   case RequestType.MESSAGE:
+  //     roomService.sendMessage(websocket,parsedObj as ChatMessage);
+  //     //message on room
+  //     break;
+  //   case RequestType.RENAME:
+  //     roomService.renameUser(websocket, (parsedObj as RenameMessage).username);
+  //     break;
+  //   case RequestType.LEAVE:
+  //   //on request of leave
+  //   roomService.leaveRoom(websocket);
+  //   break;
+  //   default:
+  //     websocket.send(
+  //       JSON.stringify({ type: "error", message: "Invalid message type" }));
+  // }
 }

@@ -1,4 +1,4 @@
-import { createClient, RedisClientType} from "redis";
+import { createClient, RedisClientType } from "redis";
 
 export class RedisClientWrapper {
   //here using the redisClient type really made my machine very slow because of deep nested
@@ -39,8 +39,7 @@ export class RedisClientWrapper {
     }
   }
 
- 
-  public async connect() : Promise< undefined | RedisClientType>{
+  public async connect(): Promise<undefined | RedisClientType> {
     if (this.client.isOpen) {
       console.log("Already Open Connection NAME: " + this._name);
       return;
@@ -56,7 +55,7 @@ export class RedisClientWrapper {
     }
   }
 
-   public get name() {
+  public get name() {
     return this._name;
   }
 
@@ -64,11 +63,10 @@ export class RedisClientWrapper {
     this._name = name;
   }
 
-  private startHeartbeat(interval:number){
-
-   this.pingInterval = setInterval(
-        async () => await this.pingClient(),
-        interval
+  private startHeartbeat(interval: number) {
+    this.pingInterval = setInterval(
+      async () => await this.pingClient(),
+      interval,
     );
   }
   private handleError(error: Error) {
