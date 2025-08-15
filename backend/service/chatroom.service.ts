@@ -1,6 +1,6 @@
 import WebSocket from "ws";
-import { Client} from "backend/types";
-import { ConnectionMessage } from "@shared/message.type";
+import { Client, Room} from "backend/types";
+import { ConnectionMessage, CreateMessage } from "@shared/message.type";
 import {RequestType} from "@shared/request.enum";
 import { ChatRoomUtility } from "backend/util/chatroom.util";
 import { RedisHelper } from "backend/redis/redis.helper";
@@ -11,12 +11,15 @@ export class RoomManager {
 
   //map to hold clientId to websocket at locallevel
   private clientsToWs:Map<number,WebSocket>;
+  private wsToClientId:Map<WebSocket,number>;
   private  rooms:Map<number,Set<number>>;
   private roomUtility:ChatRoomUtility;
   private redis:RedisHelper;
   private redisSubsriber:RedisClientType;
    constructor(client:RedisClientType,subscriber:RedisClientType){
     this.clientsToWs=new Map();
+    this.wsToClientId=new Map();
+
     this.rooms=new Map();
     this.roomUtility=new ChatRoomUtility();
     this.redis=new RedisHelper(client);
@@ -39,6 +42,8 @@ export class RoomManager {
       console.error(error);
     }
     this.clientsToWs.set(tmp_id,ws);
+    this.wsToClientId.set(ws,tmp_id);
+
     const responseString=this.roomUtility.generateMessageString<ConnectionMessage>(
       {
     id: client.id,
@@ -56,24 +61,35 @@ export class RoomManager {
     ws.send(responseString);
   }
 
-  // createRoom(ws: WebSocket, name: string) {
-  //   //create Room and ad creator client in that room
-  //   const client = this.getClientBySocket(ws);
-  //   if(!this.isClientExists(ws,client)){return;}
-  //   this.roomIdCounter++;
-  //   const room: Room = {
-  //     id: this.roomIdCounter,
-  //     clients: [],
-  //     name: name,
-  //   };
-  //   this.chatRooms.set(this.roomIdCounter, room);
-  //   const response = this.messageFactory(
-  //     RequstType.CREATE,
-  //     `Room Created Successfully RoomID: ${room.id} RoomName: ${room.name}`,
-  //   )(name, room.id);
-  //   ws.send(JSON.stringify(response));
-  //   this.joinRoom(ws,room.id);
-  // }
+  async createRoom(ws: WebSocket, message:CreateMessage) {
+    //create Room and ad creator client in that room
+    const client = await this.getClientBySocket(ws);
+    if(!client){
+      //send the error code back to ws 
+      console.log("Client does not exists thus cannot create room");
+      return;
+    }
+
+    const room:Room={
+      id:this.roomUtility.generateNewRoomId(),
+      name:message.roomName,
+      createdAt:new Date(),
+      createdBy:client.id
+    };
+
+    //creating new room and adding owner to newly created room
+    await this.redis.createNewRoom(room);
+    this.rooms.set(room.id,new Set([client.id]));
+
+    // if(!this.isClientExists(ws,client)){return;}
+    const responseString=this.roomUtility.generateMessageString<CreateMessage>({
+      roomId:room.id,
+      message:`Room Created Successfully RoomID: ${room.id} RoomName: ${room.name}`,
+      type:RequestType.CREATE,
+      roomName:room.name
+    });
+    ws.send(responseString);
+  }
 
   // renameUser(ws: WebSocket, newUsername: string) {
   //   const client = this.getClientBySocket(ws);
@@ -274,10 +290,14 @@ export class RoomManager {
   //   console.log("Client Disconnected");
   // }
 
-  // private getClientBySocket(ws: WebSocket): Client | undefined {
-  //   const clientId = this.wsToClientId.get(ws);
-  //   return clientId !== undefined ? this.clients.get(clientId) : undefined;
-  // }
+  private async getClientBySocket(ws: WebSocket): Promise<Client | undefined> {
+    const clientId = this.wsToClientId.get(ws);
+    if(clientId)
+    {
+      return await this.redis.getClientById(clientId);
+    }
+    return undefined;
+  }
 
   // private isClientExists(ws:WebSocket,client:Client | undefined)
   // {

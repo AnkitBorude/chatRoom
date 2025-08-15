@@ -1,13 +1,13 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export interface Client {
   id: number;
   name: string;
   createdAt: Date;
   roomId?: number;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface Room extends Record<string, any> {
+export interface Room{
   id: number;
   name: string;
+  createdAt:Date;
+  createdBy:number
 }
