@@ -1,13 +1,13 @@
-
 export interface Client {
   id: number;
   name: string;
   createdAt: Date;
   roomId?: number;
 }
-export interface Room{
+export interface Room {
   id: number;
   name: string;
-  createdAt:Date;
-  createdBy:number
+  createdAt: Date;
+  activeUsers: number;
+  createdBy: number;
 }
