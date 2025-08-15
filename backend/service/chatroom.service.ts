@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 import { Client, Room} from "backend/types";
-import { ConnectionMessage, CreateMessage } from "@shared/message.type";
+import { ConnectionMessage, CreateMessage, RenameMessage, RoomNotificationMessage } from "@shared/message.type";
 import {RequestType} from "@shared/request.enum";
 import { ChatRoomUtility } from "backend/util/chatroom.util";
 import { RedisHelper } from "backend/redis/redis.helper";
@@ -16,6 +16,7 @@ export class RoomManager {
   private roomUtility:ChatRoomUtility;
   private redis:RedisHelper;
   private redisSubsriber:RedisClientType;
+
    constructor(client:RedisClientType,subscriber:RedisClientType){
     this.clientsToWs=new Map();
     this.wsToClientId=new Map();
@@ -91,31 +92,39 @@ export class RoomManager {
     ws.send(responseString);
   }
 
-  // renameUser(ws: WebSocket, newUsername: string) {
-  //   const client = this.getClientBySocket(ws);
-  //   if(!this.isClientExists(ws,client)){return;}
-  //   if(!client){return;}
+  public async renameUser(ws: WebSocket,message:RenameMessage) {
 
-  //   const previousname = client.name;
-  //   client.name = newUsername;
+    const client = await this.getClientBySocket(ws);
+    
+    if(!client){
+      //send the error code back to ws 
+      console.log("Client does not exists thus cannot rename user");
+      return;
+    }
+    const previousname = client.name;
+    await this.redis.updateClient(client.id,{name:message.username});
 
-  //   const response = this.messageFactory(
-  //     RequstType.RENAME,
-  //     `Username changed successfully from ${previousname} to ${newUsername} `,
-  //   )(newUsername);
+    const clientResponse=this.roomUtility.generateMessageString<RenameMessage>(
+      {
+        message:`Username changed successfully from ${previousname} to ${message.username} `,
+        type:RequestType.RENAME,
+        username:message.username
+      }
+    );
 
-  //   ws.send(JSON.stringify(response));
+    ws.send(JSON.stringify(clientResponse));
 
-  //   const clientRoom=this.isPartofAroom(ws,client,false);
+    const roomIdofClient=await this.isPartofAlocalRoom(client);
 
-  //   if(clientRoom){
-  //     const roomNotification=this.createClientNotificationofMessage(
-  //       `User ${client.id} Changed his username from ${previousname} to ${newUsername}`,
-  //       RequstType.RENAME
-  //     );
-  //     this.broadcastNotification(clientRoom,client,roomNotification)
-  //   }
-  // }
+    if(roomIdofClient){
+      const roomNotification=this.createClientNotificationofMessage(
+        `User ${client.id} Changed his username from ${previousname} to ${message.username}`,
+        RequestType.RENAME
+      );
+      this.broadcastLocalRoomNotification(roomIdofClient,client.id,roomNotification);
+      this.broadcastNotificationOnGlobal(roomIdofClient,roomNotification);
+    }
+  }
 
   // joinRoom(ws: WebSocket, roomId: number) {
   //   const client = this.getClientBySocket(ws);
@@ -291,69 +300,69 @@ export class RoomManager {
   // }
 
   private async getClientBySocket(ws: WebSocket): Promise<Client | undefined> {
+    //returns undefined if the client not found locally or globally
+    //check locally
     const clientId = this.wsToClientId.get(ws);
     if(clientId)
     {
+      //check globally
+      //the case may arise that the client is present locally but not globally(rare)
       return await this.redis.getClientById(clientId);
     }
     return undefined;
   }
 
-  // private isClientExists(ws:WebSocket,client:Client | undefined)
-  // {
-  //  if (!client) {
-  //     const response = this.messageFactory(
-  //       RequstType.LEAVE,
-  //       "Client not found 404",
-  //     )(404);
-  //     ws.send(JSON.stringify(response));
-  //     return false;
-  //   }
-  //   return true;
-  // }
 
-  // private isPartofAroom(ws:WebSocket,client:Client,notifyClient:boolean=true)
-  // {
-  //   if(client.roomId)
-  //   {
-  //     //check if that room exists or not
-  //     const room=this.chatRooms.get(client.roomId);
-  //     if(room)
-  //     {
-  //       //roomExists
-  //       //verify if the client is present in that room or not
-  //       if(room?.clients.includes(client)){
-  //         //client exists in room too
-  //         return room;
-  //       }
-  //     }
-  //     client.roomId=undefined;
-  //   }
-  //   if(notifyClient)
-  //   {
-  //   const notification=this.createClientNotificationofMessage(` User id: ${client.id} ${client.name} Not a part of any room yet`,RequstType.NOTIFY);
-  //   ws.send(notification);
-  //   }
-    
-  //   return undefined;
-  // }
+  //check whether the client is part of any room if yes then return id of room or 
+  private async isPartofAlocalRoom(client:Client)
+  {
+    if(client.roomId)
+    {
+      //check if that room exists or not
+      const room=this.rooms.get(client.roomId);
+      if(room)
+      {
+        //roomExists
+        //verify if the client is present in that room or not
+        if(room?.has(client.roomId)){
+          //client exists in room too
+          return client.roomId;
+        }
+      }
+      //deleting leaky roomId on the client
+      delete client.roomId;
+    }
+    return undefined;
+  }
 
-  // private createClientNotificationofMessage(message:string,type:RequstType,additional?:Record<string,string>){
-  //    const notification:RoomNotificationMessage={
-  //       message:message.trim(),
-  //       notificationOf:type,
-  //       type:RequstType.NOTIFY,
-  //       additional
-  //     }
-  //     return JSON.stringify(notification);
-  // }
+  private createClientNotificationofMessage(message:string,type:RequestType,additional?:Record<string,string>){
+     const notification:RoomNotificationMessage={
+        message:message.trim(),
+        notificationOf:type,
+        type:RequestType.NOTIFY,
+        additional
+      }
+      return notification;
+  }
 
-  // private broadcastNotification(room:Room,sender:Client,notification:string)
-  // {
-  //   room.clients.forEach((otherClient) => {
-  //       if(otherClient!=sender){
-  //       otherClient.ws.send(notification);
-  //       }
-  //     });
-  // }
+  private async broadcastLocalRoomNotification(roomId:number,senderId:number,notification:RoomNotificationMessage)
+  {
+    const message=JSON.stringify(notification);
+    this.rooms.get(roomId)?.forEach((otherClientId) => {
+        if(otherClientId!=senderId){
+          this.clientsToWs.get(otherClientId)?.send(message);
+        }
+      });
+  }
+
+  private async broadcastNotificationOnGlobal(roomId:number,notification:RoomNotificationMessage)
+  {
+    const message=JSON.stringify(notification);
+    try{
+    await this.redis.publishMessage(roomId,message);
+    }catch(error)
+    {
+      console.log("Message cannot be brodcasted to other server redis error"+error);
+    }
+  }
 }

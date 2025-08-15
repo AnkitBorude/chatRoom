@@ -62,6 +62,12 @@ export class RedisHelper {
       const key=this.redisUtil.getClientkey(clientId);
      await this.redisClient.hSet(key,stringiFied_client);
   }
+
+  public async publishMessage(roomId:number,message:string)
+  {
+    const key=this.redisUtil.getRoomkey(roomId);
+    return await this.redisClient.publish(key,message);
+  }
   
 
 }
