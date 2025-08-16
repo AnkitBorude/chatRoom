@@ -18,8 +18,8 @@ export class RedisHelper {
     await this.redisClient.hSet(key, stringiFied_client);
   }
 
-  public async removeClient(clientId:number){
-    const key=this.redisUtil.getClientkey(clientId);
+  public async removeClient(clientId: number) {
+    const key = this.redisUtil.getClientkey(clientId);
     await this.redisClient.del(key);
   }
   public async getClientById(clientId: number): Promise<Client | undefined> {
@@ -98,7 +98,6 @@ export class RedisHelper {
     const chatRoomkey = this.redisUtil.getChatRoomKey(roomId);
     await this.redisClient.multi().del(key).del(chatRoomkey).exec();
   }
-
 
   public async subscribeToChatRoomPipeline(
     roomId: number,

@@ -12,7 +12,6 @@ import {
 import { RequestType } from "@shared/request.enum";
 import { ChatRoomUtility } from "backend/util/chatroom.util";
 import { RedisHelper } from "backend/redis/redis.helper";
-import { RedisClientType } from "redis";
 
 export class RoomManager {
   //map to hold clientId to websocket at locallevel
@@ -22,13 +21,13 @@ export class RoomManager {
   private roomUtility: ChatRoomUtility;
   private redis: RedisHelper;
 
-  constructor(client: RedisClientType, subscriber: RedisClientType) {
+  constructor(redis: RedisHelper) {
     this.clientsToWs = new Map();
     this.wsToClientId = new Map();
 
     this.rooms = new Map();
     this.roomUtility = new ChatRoomUtility();
-    this.redis = new RedisHelper(client, subscriber);
+    this.redis = redis;
   }
 
   async createClient(ws: WebSocket) {
@@ -62,7 +61,7 @@ export class RoomManager {
     ws.send(responseString);
   }
 
-  async createRoom(ws: WebSocket, message: CreateMessage) {
+  public async createRoom(ws: WebSocket, message: CreateMessage) {
     //create Room and ad creator client in that room
     const client = await this.getClientBySocket(ws);
     if (!client) {
@@ -302,49 +301,59 @@ export class RoomManager {
     ws.send(JSON.stringify(leftNotificationToUser));
   }
 
-  public async sendMessage(ws:WebSocket,messageObj:ChatMessage)
-  {
-    const client=await this.getClientBySocket(ws);
+  public async sendMessage(ws: WebSocket, messageObj: ChatMessage) {
+    const client = await this.getClientBySocket(ws);
     if (!client) {
       //send the error code back to ws
       console.log("Client does not exists thus cannot create room");
       return;
     }
-    const messageId=messageObj.id ?? "0";
-    
-    const currentRoomId=await this.isPartofAlocalRoom(client);
-    if(!currentRoomId)
-    {
+    const messageId = messageObj.id ?? "0";
+
+    const currentRoomId = await this.isPartofAlocalRoom(client);
+    if (!currentRoomId) {
       //not part of any room cannot send message ignore
       return;
     }
-    const room=await this.isRoomExists(currentRoomId);
+    const room = await this.isRoomExists(currentRoomId);
 
-    if(!room){
+    if (!room) {
       //the room does not exists so cannot send message ignore
-      return;}
+      return;
+    }
 
-    if(room.activeUsers<=0)
-    {
+    if (room.activeUsers <= 0) {
       //room is empty
-      const notification=this.roomUtility.createClientNotificationofMessage('Room is empty please let other to join to send message',RequestType.MESSAGE);
+      const notification = this.roomUtility.createClientNotificationofMessage(
+        "Room is empty please let other to join to send message",
+        RequestType.MESSAGE,
+      );
       ws.send(JSON.stringify(notification));
       return;
     }
 
-    const messageTobeSent:ChatMessage={
-      message:messageObj.message,
-      roomId:currentRoomId,
-      sender:client.name,
-      type:RequestType.MESSAGE
+    const messageTobeSent: ChatMessage = {
+      message: messageObj.message,
+      roomId: currentRoomId,
+      sender: client.name,
+      type: RequestType.MESSAGE,
     };
 
-    //although we are broadcasting to global channel thus message might receieved by twice 
+    //although we are broadcasting to global channel thus message might receieved by twice
     //optimization required later
-    await this.broadcastLocalRoomNotification(currentRoomId,client.id,messageTobeSent);
-    await this.broadcastNotificationOnGlobal(currentRoomId,messageTobeSent);
+    await this.broadcastLocalRoomNotification(
+      currentRoomId,
+      client.id,
+      messageTobeSent,
+    );
+    await this.broadcastNotificationOnGlobal(currentRoomId, messageTobeSent);
 
-    const successNotificationToClient=this.roomUtility.createClientNotificationofMessage("Message Sent Successfully",RequestType.MESSAGE,{messageId});
+    const successNotificationToClient =
+      this.roomUtility.createClientNotificationofMessage(
+        "Message Sent Successfully",
+        RequestType.MESSAGE,
+        { messageId },
+      );
     ws.send(JSON.stringify(successNotificationToClient));
   }
 
@@ -355,16 +364,14 @@ export class RoomManager {
     //as we do not allow empty rooms by the way
     const client = await this.getClientBySocket(ws);
 
-    if(client)
-    {
-        const roomId=await this.isPartofAlocalRoom(client)
-        if(roomId)
-        {
-          await this.leaveRoom(ws);
-        }
-        await this.redis.removeClient(client.id);
-        this.wsToClientId.delete(ws);
-        this.clientsToWs.delete(client.id);
+    if (client) {
+      const roomId = await this.isPartofAlocalRoom(client);
+      if (roomId) {
+        await this.leaveRoom(ws);
+      }
+      await this.redis.removeClient(client.id);
+      this.wsToClientId.delete(ws);
+      this.clientsToWs.delete(client.id);
     }
     console.log("Client Disconnected");
   }
