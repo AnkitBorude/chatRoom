@@ -4,6 +4,7 @@ import {
   ConnectionMessage,
   CreateMessage,
   JoinMessage,
+  LeaveMessage,
   RenameMessage,
   RoomNotificationMessage,
 } from "@shared/message.type";
@@ -165,11 +166,11 @@ export class RoomManager {
       return;
     }
 
-    //Check whether client is part of any room yet
-    // const clientId=this.isPartofAlocalRoom(client);
-    // if(clientId){
-    //   this.leaveRoom(ws);
-    // }
+    const roomId = await this.isPartofAlocalRoom(client);
+    if (roomId) {
+      //is part of any room leave previous room
+      await this.leaveRoom(ws);
+    }
 
     //
 
@@ -202,7 +203,7 @@ export class RoomManager {
         `${client.name} has Joined the Room`,
         RequestType.JOIN,
       );
-    this.clientsToWs.get(client.id)?.send(JSON.stringify(joinMessageToUser));
+    ws.send(JSON.stringify(joinMessageToUser));
 
     this.broadcastLocalRoomNotification(
       roomIdToJoin,
@@ -212,35 +213,93 @@ export class RoomManager {
     this.broadcastNotificationOnGlobal(roomIdToJoin, joinNotificationToOthers);
   }
 
-  // leaveRoom(ws: WebSocket) {
-  //   const client = this.getClientBySocket(ws);
-  //   if(!this.isClientExists(ws,client)){return;}
-  //   if(!client){return;};
-  //   const currentRoom=this.isPartofAroom(ws,client);
-  //   if(!currentRoom){return;}
+  public async leaveRoom(ws: WebSocket) {
+    const client = await this.getClientBySocket(ws);
+    let deletedLocalRoom: boolean = false;
+    let deletedGlobalRoom: boolean = false;
 
-  //     currentRoom.clients = currentRoom.clients.filter(
-  //       (c) => c.id !== client.id,
-  //     );
+    if (!client) {
+      //send the error code back to ws
+      console.log("Client does not exists thus cannot leave Room");
+      return;
+    }
 
-  //     if (currentRoom.clients.length == 0) {
-  //       //if room is empty
-  //       this.chatRooms.delete(currentRoom.id);
-  //       client.roomId=undefined;
-  //     } else {
-  //       const leaveNotificationToOthers=this.createClientNotificationofMessage(`${client.name} has left the Room`,RequstType.LEAVE);
-  //       this.broadcastNotification(currentRoom,client,leaveNotificationToOthers);
-  //     }
+    const currentRoomId = await this.isPartofAlocalRoom(client);
 
-  //   const leftNotificationToUser: LeaveMessage = this.messageFactory(
-  //     RequstType.LEAVE,
-  //     `Left the room ${currentRoom?.name}`,
-  //   )(currentRoom.id);
+    if (!currentRoomId) {
+      //not part of any room so cannot leave invalid command
+      return;
+    }
+    const roomMeta = await this.isRoomExists(currentRoomId);
 
-  //   client.roomId = undefined;
+    //remove from the local set and
+    this.rooms.get(currentRoomId)?.delete(client.id);
+    const globalRoomSpaceSize = (
+      await this.redis.removeClientFromRoom(currentRoomId, client.id)
+    ).slice(2);
 
-  //   client.ws.send(JSON.stringify(leftNotificationToUser));
-  // }
+    //check if the size of local and global room
+    //if empty directly delete the room and unsubcribe from the pipeline
+
+    const sizeOfRoom = this.rooms.get(currentRoomId)?.size;
+
+    if (!sizeOfRoom || sizeOfRoom <= 0) {
+      //no one in local room
+      await this.redis.unSubscribeToChatRoomPipeline(currentRoomId);
+      this.rooms.delete(currentRoomId);
+      deletedLocalRoom = true;
+      //brodcast globally
+    }
+
+    //the cardinality of set of users in the room is ultimate source of truth
+    if (Number(globalRoomSpaceSize[1]) <= 0) {
+      //remove that room and delete the set
+      await this.redis.removeEmptyRoom(currentRoomId);
+      deletedGlobalRoom = true;
+    }
+
+    let leaveNotificationToOthers;
+    if (Number(roomMeta?.createdBy) === client.id) {
+      leaveNotificationToOthers =
+        this.roomUtility.createClientNotificationofMessage(
+          `Owner of the room ${client.name} has left the Room`,
+          RequestType.LEAVE,
+        );
+    } else {
+      leaveNotificationToOthers =
+        this.roomUtility.createClientNotificationofMessage(
+          `${client.name} has left the Room`,
+          RequestType.LEAVE,
+        );
+    }
+
+    if (deletedLocalRoom && !deletedGlobalRoom) {
+      //send gloabl left message
+      this.broadcastNotificationOnGlobal(
+        currentRoomId,
+        leaveNotificationToOthers,
+      );
+    } else if (!deletedGlobalRoom && !deletedLocalRoom) {
+      this.broadcastNotificationOnGlobal(
+        currentRoomId,
+        leaveNotificationToOthers,
+      );
+      this.broadcastLocalRoomNotification(
+        currentRoomId,
+        client.id,
+        leaveNotificationToOthers,
+      );
+    }
+
+    const leftNotificationToUser =
+      this.roomUtility.generateMessageString<LeaveMessage>({
+        message: `Left the room ${roomMeta?.name} current active users ${roomMeta?.activeUsers}`,
+        roomId: currentRoomId,
+        type: RequestType.LEAVE,
+      });
+
+    ws.send(JSON.stringify(leftNotificationToUser));
+  }
 
   // sendMessage(ws:WebSocket,messageObject:ChatMessage)
   // {
@@ -271,71 +330,6 @@ export class RoomManager {
   //   const successNotificationToClient=this.createClientNotificationofMessage("Message Sent Successfully",RequstType.MESSAGE,{messageId});
   //   ws.send(successNotificationToClient);
   // }
-  // // Overloade signatures
-  // private messageFactory(
-  //   request: RequstType.CREATE,
-  //   message: string,
-  // ): (roomName: string, roomId: number) => CreateMessage;
-  // private messageFactory(
-  //   request: RequstType.JOIN,
-  //   message: string,
-  // ): (roomId: number, username: string,activeUsers:number,roomName:string) => JoinMessage;
-  // private messageFactory(
-  //   request: RequstType.MESSAGE,
-  //   message: string,
-  // ): (roomId: number,sender:string) => ChatMessage;
-  // private messageFactory(
-  //   request: RequstType.RENAME,
-  //   message: string,
-  // ): (username: string) => RenameMessage;
-
-  // private messageFactory(
-  //   request: RequstType.LEAVE,
-  //   message: string,
-  // ): (roomId: number) => LeaveMessage;
-
-  // // Implementation
-  // private messageFactory(request: RequstType, message: string) {
-  //   switch (request) {
-  //     case RequstType.CREATE:
-  //       return (roomName: string, roomId: number): CreateMessage => ({
-  //         type: request,
-  //         roomName,
-  //         roomId,
-  //         message,
-  //       });
-  //     case RequstType.JOIN:
-  //       return (roomId: number, username: string,activeUsers:number,roomName:string): JoinMessage => ({
-  //         type: request,
-  //         roomId,
-  //         username,
-  //         message,
-  //         activeUsers,
-  //         roomName
-  //       });
-  //     case RequstType.MESSAGE:
-  //       return (roomId: number,sender:string): ChatMessage => ({
-  //         type: request,
-  //         roomId,
-  //         message,
-  //         sender
-  //       });
-  //     case RequstType.RENAME:
-  //       return (username: string): RenameMessage => ({
-  //         type: request,
-  //         username,
-  //         message,
-  //       });
-  //     case RequstType.LEAVE:
-  //       return (roomId: number): LeaveMessage => ({
-  //         type: request,
-  //         roomId,
-  //         message,
-  //       });
-  //     default:
-  //       throw new Error("Invalid request type");
-  //   }
-  // }
 
   // private removeClient(ws: WebSocket) {
   //   //delete client from the all clients map
@@ -359,6 +353,8 @@ export class RoomManager {
       //check globally
       //the case may arise that the client is present locally but not globally(rare)
       //but the global settings is the source of truth
+      //that means lets suppose we removed a client using api endpoint (for like ban or something
+      //the user cant access anything)
       return await this.redis.getClientById(clientId);
     }
     //leaky client with no gloabal reference

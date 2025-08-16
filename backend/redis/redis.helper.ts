@@ -54,6 +54,23 @@ export class RedisHelper {
       .sAdd(chatRoomkey, [String(clientId)])
       .hSet(clientKey, "roomId", roomId)
       .hIncrBy(roomKey, "activeUsers", 1)
+      .sCard(chatRoomkey)
+      .exec();
+  }
+
+  // EXEC returns an array of replies, where every element is the reply of a
+  // single command in the transaction, in the same order the commands were issued.
+  public async removeClientFromRoom(roomId: number, clientId: number) {
+    const chatRoomkey = this.redisUtil.getChatRoomKey(roomId);
+    const roomKey = this.redisUtil.getRoomkey(roomId);
+    const clientKey = this.redisUtil.getClientkey(clientId);
+
+    return await this.redisClient
+      .multi()
+      .sRem(chatRoomkey, [String(clientId)])
+      .hDel(clientKey, "roomId")
+      .hIncrBy(roomKey, "activeUsers", -1)
+      .sCard(chatRoomkey)
       .exec();
   }
 
@@ -71,13 +88,23 @@ export class RedisHelper {
     return await this.redisClient.publish(key, message);
   }
 
+  public async removeEmptyRoom(roomId: number) {
+    const key = this.redisUtil.getRoomkey(roomId);
+    const chatRoomkey = this.redisUtil.getChatRoomKey(roomId);
+    await this.redisClient.multi().del(key).del(chatRoomkey).exec();
+  }
   public async subscribeToChatRoomPipeline(
     roomId: number,
     cb: (message: string) => void,
   ) {
-    const key = this.redisUtil.getChatRoomKey(roomId);
+    const key = this.redisUtil.getRoomkey(roomId);
     return this.redisPublisher.subscribe(key, (message) => {
       cb(message);
     });
+  }
+
+  public async unSubscribeToChatRoomPipeline(roomId: number) {
+    const key = this.redisUtil.getRoomkey(roomId);
+    await this.redisPublisher.unsubscribe(key);
   }
 }
