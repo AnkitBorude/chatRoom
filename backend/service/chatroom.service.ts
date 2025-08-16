@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import { Client, Room } from "backend/types";
 import {
+  ChatMessage,
   ConnectionMessage,
   CreateMessage,
   JoinMessage,
@@ -52,11 +53,11 @@ export class RoomManager {
         username: client.name,
         message: "Welcome to server",
       });
-    //attach event handler here to listen for
-    //close event
-    // client.ws.on("close", () => {
-    //   this.removeClient(ws);
-    // });
+    // attach event handler here to listen for
+    // close event
+    ws.on("close", () => {
+      this.removeClient(ws);
+    });
 
     ws.send(responseString);
   }
@@ -301,49 +302,72 @@ export class RoomManager {
     ws.send(JSON.stringify(leftNotificationToUser));
   }
 
-  // sendMessage(ws:WebSocket,messageObject:ChatMessage)
-  // {
-  //   const client=this.getClientBySocket(ws);
-  //   const message=messageObject.message;
-  //   const messageId=messageObject.id ?? "0";
-  //   if(!this.isClientExists(ws,client)){return;}
-  //   //just to off this f*cking eslint error of undefined client
-  //   if(!client){return};
-  //   const room=this.isPartofAroom(ws,client)
-  //   if(!room){return;}
-  //   if(room.clients.length==0)
-  //   {
-  //     //room is empty
-  //     const notification=this.createClientNotificationofMessage('Room is empty please let other to join to send message',RequstType.MESSAGE);
-  //     ws.send(notification);
-  //     return;
-  //   }
+  public async sendMessage(ws:WebSocket,messageObj:ChatMessage)
+  {
+    const client=await this.getClientBySocket(ws);
+    if (!client) {
+      //send the error code back to ws
+      console.log("Client does not exists thus cannot create room");
+      return;
+    }
+    const messageId=messageObj.id ?? "0";
+    
+    const currentRoomId=await this.isPartofAlocalRoom(client);
+    if(!currentRoomId)
+    {
+      //not part of any room cannot send message ignore
+      return;
+    }
+    const room=await this.isRoomExists(currentRoomId);
 
-  //   const messageTobeSent=this.messageFactory(RequstType.MESSAGE,message.trim())(room.id,client.name);
-  //   room.clients.forEach((otherClient)=>{
-  //     if(client!=otherClient)
-  //     {
-  //      otherClient.ws.send(JSON.stringify(messageTobeSent));
-  //     }
-  //   })
+    if(!room){
+      //the room does not exists so cannot send message ignore
+      return;}
 
-  //   const successNotificationToClient=this.createClientNotificationofMessage("Message Sent Successfully",RequstType.MESSAGE,{messageId});
-  //   ws.send(successNotificationToClient);
-  // }
+    if(room.activeUsers<=0)
+    {
+      //room is empty
+      const notification=this.roomUtility.createClientNotificationofMessage('Room is empty please let other to join to send message',RequestType.MESSAGE);
+      ws.send(JSON.stringify(notification));
+      return;
+    }
 
-  // private removeClient(ws: WebSocket) {
-  //   //delete client from the all clients map
-  //   //remove the client from the chatrooms
-  //   //if the chatroom has zero clients then delete that room too
-  //   //as we do not allow empty rooms by the way
-  //   this.leaveRoom(ws);
-  //   const client = this.getClientBySocket(ws);
-  //   if (client) {
-  //     this.clients.delete(client.id);
-  //   }
-  //   this.wsToClientId.delete(ws);
-  //   console.log("Client Disconnected");
-  // }
+    const messageTobeSent:ChatMessage={
+      message:messageObj.message,
+      roomId:currentRoomId,
+      sender:client.name,
+      type:RequestType.MESSAGE
+    };
+
+    //although we are broadcasting to global channel thus message might receieved by twice 
+    //optimization required later
+    await this.broadcastLocalRoomNotification(currentRoomId,client.id,messageTobeSent);
+    await this.broadcastNotificationOnGlobal(currentRoomId,messageTobeSent);
+
+    const successNotificationToClient=this.roomUtility.createClientNotificationofMessage("Message Sent Successfully",RequestType.MESSAGE,{messageId});
+    ws.send(JSON.stringify(successNotificationToClient));
+  }
+
+  public async removeClient(ws: WebSocket) {
+    //delete client from the all clients map
+    //remove the client from the chatrooms
+    //if the chatroom has zero clients then delete that room too
+    //as we do not allow empty rooms by the way
+    const client = await this.getClientBySocket(ws);
+
+    if(client)
+    {
+        const roomId=await this.isPartofAlocalRoom(client)
+        if(roomId)
+        {
+          await this.leaveRoom(ws);
+        }
+        await this.redis.removeClient(client.id);
+        this.wsToClientId.delete(ws);
+        this.clientsToWs.delete(client.id);
+    }
+    console.log("Client Disconnected");
+  }
 
   private async getClientBySocket(ws: WebSocket): Promise<Client | undefined> {
     //returns undefined if the client not found locally or globally
@@ -396,7 +420,7 @@ export class RoomManager {
   private async broadcastLocalRoomNotification(
     roomId: number,
     senderId: number,
-    notification: RoomNotificationMessage,
+    notification: RoomNotificationMessage | ChatMessage,
   ) {
     const message = JSON.stringify(notification);
     this.rooms.get(roomId)?.forEach((otherClientId) => {
@@ -408,7 +432,7 @@ export class RoomManager {
 
   private async broadcastNotificationOnGlobal(
     roomId: number,
-    notification: RoomNotificationMessage,
+    notification: RoomNotificationMessage | ChatMessage,
   ) {
     const message = JSON.stringify(notification);
     try {

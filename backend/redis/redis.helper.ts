@@ -17,6 +17,11 @@ export class RedisHelper {
     const stringiFied_client = this.redisUtil.stringifyObject(client);
     await this.redisClient.hSet(key, stringiFied_client);
   }
+
+  public async removeClient(clientId:number){
+    const key=this.redisUtil.getClientkey(clientId);
+    await this.redisClient.del(key);
+  }
   public async getClientById(clientId: number): Promise<Client | undefined> {
     const key = this.redisUtil.getClientkey(clientId);
     const client = await this.redisClient.hGetAll(key);
@@ -93,6 +98,8 @@ export class RedisHelper {
     const chatRoomkey = this.redisUtil.getChatRoomKey(roomId);
     await this.redisClient.multi().del(key).del(chatRoomkey).exec();
   }
+
+
   public async subscribeToChatRoomPipeline(
     roomId: number,
     cb: (message: string) => void,
