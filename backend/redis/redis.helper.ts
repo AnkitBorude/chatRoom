@@ -29,7 +29,11 @@ export class RedisHelper {
     if (Object.keys(client).length === 0) {
       return undefined;
     }
-    return JSON.parse(JSON.stringify(client));
+    //typecasting id back to number
+
+    const parsedClient: Client = JSON.parse(JSON.stringify(client));
+    parsedClient.id = Number(parsedClient.id);
+    return parsedClient;
   }
 
   public async createNewRoom(room: Room) {
@@ -41,12 +45,14 @@ export class RedisHelper {
 
   public async getRoomById(roomId: number): Promise<Room | undefined> {
     const key = this.redisUtil.getRoomkey(roomId);
-    const client = await this.redisClient.hGetAll(key);
+    const room = await this.redisClient.hGetAll(key);
     //redis returns empty object in case it does not find any hash
-    if (Object.keys(client).length === 0) {
+    if (Object.keys(room).length === 0) {
       return undefined;
     }
-    return JSON.parse(JSON.stringify(client));
+    const parsedRoom: Room = JSON.parse(JSON.stringify(room));
+    parsedRoom.id = Number(parsedRoom.id);
+    return parsedRoom;
   }
 
   public async addClientInRoom(roomId: number, clientId: number) {

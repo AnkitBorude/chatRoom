@@ -32,6 +32,8 @@ export class RoomManager {
 
   async createClient(ws: WebSocket) {
     const tmp_id = this.roomUtility.generateNewClientId();
+    this.clientsToWs.set(tmp_id, ws);
+    this.wsToClientId.set(ws, tmp_id);
     const client: Client = {
       id: tmp_id,
       name: "User " + tmp_id,
@@ -42,8 +44,6 @@ export class RoomManager {
     } catch (error) {
       console.error(error);
     }
-    this.clientsToWs.set(tmp_id, ws);
-    this.wsToClientId.set(ws, tmp_id);
 
     const responseString =
       this.roomUtility.generateMessageString<ConnectionMessage>({
@@ -85,13 +85,13 @@ export class RoomManager {
     const responseString =
       this.roomUtility.generateMessageString<CreateMessage>({
         roomId: room.id,
-        message: `Room Created Successfully RoomID: ${room.id} RoomName: ${room.name}`,
+        message: ` Room Created Successfully RoomID: ${room.id} RoomName: ${room.name} `,
         type: RequestType.CREATE,
         roomName: room.name,
       });
     ws.send(responseString);
 
-    this.joinRoom(ws, room.id);
+    await this.joinRoom(ws, room.id);
   }
 
   public async renameUser(ws: WebSocket, message: RenameMessage) {
@@ -112,7 +112,7 @@ export class RoomManager {
         username: message.username,
       });
 
-    ws.send(JSON.stringify(clientResponse));
+    ws.send(clientResponse);
 
     const roomIdofClient = await this.isPartofAlocalRoom(client);
 
@@ -135,12 +135,13 @@ export class RoomManager {
   public async joinRoom(ws: WebSocket, roomId: number): Promise<void>;
 
   public async joinRoom(ws: WebSocket, secondArg: JoinMessage | number) {
-    let roomIdToJoin;
+    let roomIdToJoin: number;
 
+    console.log("Request for Joining room");
     if (typeof secondArg === "number") {
       roomIdToJoin = secondArg;
     } else {
-      roomIdToJoin = secondArg.roomId;
+      roomIdToJoin = Number(secondArg.roomId);
     }
     const client = await this.getClientBySocket(ws);
 
@@ -149,24 +150,24 @@ export class RoomManager {
       console.log("Client does not exists thus cannot create room");
       return;
     }
-
     //check whether the passed roomId exists
-    const roomToJoin = await this.isRoomExists(roomIdToJoin);
+    const roomToJoin = await this.isRoomExistsGlobally(roomIdToJoin);
 
     if (!roomToJoin) {
       const response = this.roomUtility.generateMessageString<JoinMessage>({
-        roomId: roomIdToJoin,
+        roomId: 404,
         username: client.name,
         activeUsers: 0,
         type: RequestType.JOIN,
-        message: "Room NOT Found 404",
+        message: roomIdToJoin + " Room NOT Found please enter valid room id",
         roomName: "NOT FOUND ZERO ROOM",
       });
-      ws.send(JSON.stringify(response));
+      ws.send(response);
       return;
     }
 
     const roomId = await this.isPartofAlocalRoom(client);
+    console.log("Users previous room id" + roomId);
     if (roomId) {
       //is part of any room leave previous room
       await this.leaveRoom(ws);
@@ -191,7 +192,7 @@ export class RoomManager {
     const joinMessageToUser =
       this.roomUtility.generateMessageString<JoinMessage>({
         activeUsers: roomToJoin.activeUsers,
-        message: `Joined room ${roomToJoin.name} current Online ${roomToJoin.activeUsers},created by ${roomToJoin.createdBy} at ${roomToJoin.createdAt.toLocaleString()}`,
+        message: `Joined room Name: ${roomToJoin.name} total active: ${roomToJoin.activeUsers},owner ID: ${roomToJoin.createdBy} `,
         roomId: roomIdToJoin,
         roomName: roomToJoin.name,
         type: RequestType.JOIN,
@@ -203,7 +204,7 @@ export class RoomManager {
         `${client.name} has Joined the Room`,
         RequestType.JOIN,
       );
-    ws.send(JSON.stringify(joinMessageToUser));
+    ws.send(joinMessageToUser);
 
     this.broadcastLocalRoomNotification(
       roomIdToJoin,
@@ -398,11 +399,16 @@ export class RoomManager {
     if (isLocalRoom) {
       //same case may arise that room is available locally but not globally
       //gloabl settings is source truth
-      return await this.redis.getRoomById(roomId);
+      return await this.isRoomExistsGlobally(roomId);
     }
     //leaky local room with no global reference
     //induce sideEffect if possible to remove leaky room
     return undefined;
+  }
+  private async isRoomExistsGlobally(
+    roomId: number,
+  ): Promise<Room | undefined> {
+    return await this.redis.getRoomById(roomId);
   }
 
   //check whether the client is part of any room if yes then return id of room or
@@ -452,8 +458,18 @@ export class RoomManager {
   }
 
   private broadcastMessage(roomId: number, message: string) {
+    console.log("Size of Client Map " + this.clientsToWs.size);
     this.rooms.get(roomId)?.forEach((otherClientId) => {
-      this.clientsToWs.get(otherClientId)?.send(message);
+      this.clientsToWs.get(otherClientId)?.send(message, (error) => {
+        if (error) {
+          console.log(
+            "Error while brodcasting while broadcasting to " +
+              otherClientId +
+              " error is " +
+              error,
+          );
+        }
+      });
     });
   }
 }
