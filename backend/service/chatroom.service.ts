@@ -70,6 +70,7 @@ export class RoomManager {
     if (!client) {
       //send the error code back to ws
       console.log("Client does not exists thus cannot create room");
+      ws.send(this.roomUtility.createNotFoundMessage(RequestType.CREATE));
       return;
     }
 
@@ -154,7 +155,9 @@ export class RoomManager {
 
     if (!client) {
       //send the error code back to ws
+      ws.send(this.roomUtility.createNotFoundMessage(RequestType.JOIN));
       console.log("Client does not exists thus cannot create room");
+
       return;
     }
     //check whether the passed roomId exists
@@ -225,7 +228,13 @@ export class RoomManager {
     this.broadcastNotificationOnGlobal(roomIdToJoin, joinNotificationToOthers);
   }
 
-  public async leaveRoom(ws: WebSocket) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async leaveRoom(ws:WebSocket):Promise<any>;
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async leaveRoom(clientId:number,roomId:number):Promise<any>;
+  
+  public async leaveRoom(firstArg: WebSocket | number,secondArg?:number) {
     const client = await this.getClientBySocket(ws);
     let deletedLocalRoom: boolean = false;
     let deletedGlobalRoom: boolean = false;
@@ -233,6 +242,7 @@ export class RoomManager {
     if (!client) {
       //send the error code back to ws
       console.log("Client does not exists thus cannot leave Room");
+      ws.send(this.roomUtility.createNotFoundMessage(RequestType.LEAVE));
       return;
     }
 
@@ -330,6 +340,7 @@ export class RoomManager {
     if (!client) {
       //send the error code back to ws
       console.log("Client does not exists thus cannot create room");
+      ws.send(this.roomUtility.createNotFoundMessage(RequestType.MESSAGE));
       return;
     }
     const messageId = messageObj.id ?? "0";
@@ -390,15 +401,18 @@ export class RoomManager {
 
     console.log("Removing disconnected client from the room "+JSON.stringify(client));
 
+    console.log("Socket from the wstoClient "+this.wsToClientId.get(ws));
     if (client) {
       const roomId = await this.isPartofAlocalRoom(client);
       if (roomId) {
         await this.leaveRoom(ws);
       }
       await this.redis.removeClient(client.id);
+      console.log("Socket from the wstoClient "+this.wsToClientId.get(ws));
       this.wsToClientId.delete(ws);
       this.clientsToWs.delete(client.id);
     }
+    
     console.log("Client Disconnected");
   }
 
@@ -412,7 +426,23 @@ export class RoomManager {
       //but the global settings is the source of truth
       //that means lets suppose we removed a client using api endpoint (for like ban or something
       //the user cant access anything)
-      return await this.redis.getClientById(clientId);
+      const client= await this.redis.getClientById(clientId);
+      if(!client)
+      {
+        //this means client not available globally.
+        //check if it was part of any available room on server
+        for (const [key, set] of this.rooms) {
+            if(set.has(clientId))
+            {
+              //remove from the room also
+              console.log("User found in room removing it asap"+key);
+              await this.leaveRoom(ws);
+              break;
+            }
+          }
+       this.wsToClientId.delete(ws);
+       this.clientsToWs.delete(clientId);
+      }
     }
     //leaky client with no gloabal reference
     //induce sideEffect if possible to remove

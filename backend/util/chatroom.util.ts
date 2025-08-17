@@ -48,8 +48,12 @@ export class ChatRoomUtility {
     return [uuid,rmessage];
   }
 
-  public createNotFoundMessage()
+  public createNotFoundMessage(type:RequestType)
   {
-    
+    const message:BaseMessage={
+      message:"You have been removed from server by System/ Admin.Kindly rejoin",
+      type
+    };
+    return JSON.stringify(message);
   }
 }
