@@ -13,6 +13,7 @@ import { RequestType } from "@shared/request.enum";
 import { ChatRoomUtility } from "backend/util/chatroom.util";
 import { RedisHelper } from "backend/redis/redis.helper";
 
+
 export class RoomManager {
   //map to hold clientId to websocket at locallevel
   private clientsToWs: Map<number, WebSocket>;
@@ -116,12 +117,16 @@ export class RoomManager {
 
     const roomIdofClient = await this.isPartofAlocalRoom(client);
 
+    console.log("🚀 ~ RoomManager ~ renameUser ~ roomIdofClient:", roomIdofClient)
+
     if (roomIdofClient) {
       const roomNotification =
         this.roomUtility.createClientNotificationofMessage(
           `User ${client.id} Changed his username from ${previousname} to ${message.username}`,
           RequestType.RENAME,
         );
+
+        console.log("THE ROOM NOTIFICATION "+JSON.stringify(roomNotification));
       this.broadcastLocalRoomNotification(
         roomIdofClient,
         client.id,
@@ -419,7 +424,7 @@ export class RoomManager {
       if (room) {
         //roomExists
         //verify if the client is present in that room or not
-        if (room?.has(client.roomId)) {
+        if (room?.has(client.id)) {
           //client exists in room too
           return client.roomId;
         }
