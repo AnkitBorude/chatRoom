@@ -29,4 +29,27 @@ export class ChatRoomUtility {
     };
     return notification;
   }
+
+  public appendUUIDtoMessage(uuid:string,message:string)
+  {
+    return message+">"+uuid;
+  }
+  public retrieveUUIDandMessage(message:string):[string,string]
+  {
+    const lastIndex=message.lastIndexOf('}');
+    if(message[lastIndex+1]!=='>')
+    {
+      throw new Error("Invalid Message format");
+    }
+
+    const uuid=message.slice(lastIndex+2);
+    const rmessage=message.slice(0,lastIndex+1);
+
+    return [uuid,rmessage];
+  }
+
+  public createNotFoundMessage()
+  {
+    
+  }
 }

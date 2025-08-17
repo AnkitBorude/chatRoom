@@ -27,6 +27,7 @@ export interface ChatMessage extends BaseMessage {
   message: string;
   sender: string;
   id?: string;
+  serverId?:string
 }
 
 export interface RenameMessage extends BaseMessage {

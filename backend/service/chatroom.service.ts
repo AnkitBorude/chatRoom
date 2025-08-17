@@ -191,7 +191,11 @@ export class RoomManager {
       //attach publishMent to room
       //assumming no message burst in that case we would require a queue
       this.redis.subscribeToChatRoomPipeline(roomIdToJoin, (message) => {
-        this.broadcastMessage(roomIdToJoin, message);
+        const incomingMessage=this.roomUtility.retrieveUUIDandMessage(message);
+        if(incomingMessage[0]!==this.serverId)
+        {
+        this.broadcastMessage(roomIdToJoin,incomingMessage[1]);
+        }
       });
     }
     await this.redis.addClientInRoom(roomIdToJoin, client.id);
@@ -468,7 +472,8 @@ export class RoomManager {
     roomId: number,
     notification: RoomNotificationMessage | ChatMessage,
   ) {
-    const message = JSON.stringify(notification);
+    let message = JSON.stringify(notification);
+    message=this.roomUtility.appendUUIDtoMessage(this.serverId,message);
     try {
       await this.redis.publishMessage(roomId, message);
     } catch (error) {
@@ -479,7 +484,7 @@ export class RoomManager {
   }
 
   private broadcastMessage(roomId: number, message: string) {
-    console.log("Size of Client Map " + this.clientsToWs.size);
+
     this.rooms.get(roomId)?.forEach((otherClientId) => {
       this.clientsToWs.get(otherClientId)?.send(message, (error) => {
         if (error) {
