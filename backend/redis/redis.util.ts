@@ -2,7 +2,7 @@ export class RedisUtil {
   private readonly CLIENT_KEY_INITIALIZER = "client:<id>";
   private readonly ROOM_KEY_INITIALIZER = "room:<id>";
   private readonly CHAT_ROOM_SET_KEY_INIT = "room:<id>:client";
-  private readonly SERVER_SET_KEY="server";
+  private readonly SERVER_SET_KEY="server:<id>";
 
   constructor() {}
 
@@ -17,9 +17,9 @@ export class RedisUtil {
   public getChatRoomKey(key: number) {
     return this.CHAT_ROOM_SET_KEY_INIT.replace("<id>", key.toString());
   }
-  public getServerSetKey()
+  public getServerSetKey(key:string)
   {
-    return this.SERVER_SET_KEY;
+    return this.SERVER_SET_KEY.replace("<id>",key);
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public stringifyObject(obj: Record<string, any>): Record<string, string> {

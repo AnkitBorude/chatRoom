@@ -2,6 +2,8 @@ import http from "http";
 import { RedisClientType } from "redis";
 import WebSocket from "ws";
 import { RoomManager } from "./service/chatroom.service";
+import crypto from "crypto";
+import os from "os";
 import {
   BaseMessage,
   ChatMessage,
@@ -11,12 +13,14 @@ import {
 } from "@shared/message.type";
 import { RequestType } from "@shared/request.enum";
 import { RedisHelper } from "./redis/redis.helper";
+import { ServerInfo } from "./types";
 export class ChatRoomWebsocket {
   private websocketServer: WebSocket.Server;
   private roomManager: RoomManager;
   private connectionLifeMap: Map<WebSocket, boolean>;
   private readonly PING_INTERVAL: number = 30000;
   private redisHelper:RedisHelper;
+  private serverId:string=crypto.randomUUID();
   constructor(
     server: http.Server,
     client: RedisClientType,
@@ -25,21 +29,29 @@ export class ChatRoomWebsocket {
     this.websocketServer = new WebSocket.Server({ server });
     this.redisHelper=new RedisHelper(client, subscriber);
     //generate New ServerId
-    this.roomManager = new RoomManager(this.redisHelper);
+    this.roomManager = new RoomManager(this.redisHelper,this.serverId);
     this.connectionLifeMap = new Map();
   }
+  public async initialize() {
 
-  static async createServer()
-  {
+    const info: ServerInfo = {
+    serverId:this.serverId,
+    host: os.hostname(),
+    env: process.env.NODE_ENV || "unknown",
+    startedAt: Date.now(),
+    activeConnections: 0,
+    totalRooms: 0,
+    lastUpdatedAt:Date.now(),
+    port:3000,
+    totalMessagesReceived:0,
+    totalMessagesSent:0
+  };
 
-  }
-
-  private async createServerId()
-  {
-    //get all serverId list from the redis
-    //generate new Server
-  }
-  public initialize() {
+    this.redisHelper.addServer(this.serverId,info);
+    
+    this.websocketServer.on('listening',()=>{
+      console.log("Websocket server is listening now");
+    })
     this.websocketServer.on("connection", (websocket) => {
       // Client connected to server
       this.roomManager.createClient(websocket);
@@ -80,8 +92,9 @@ export class ChatRoomWebsocket {
       });
     }, this.PING_INTERVAL);
 
-    this.websocketServer.on("close", () => {
+    this.websocketServer.on("close", async () => {
       clearInterval(pingInterval);
+      await this.redisHelper.removeServerId(this.serverId);
     });
   }
 
@@ -92,7 +105,7 @@ export class ChatRoomWebsocket {
     } catch (error) {
       const errora = error as Error;
       console.error(error);
-      websocket.send("Server Error " + errora.name);
+      websocket.send("Server Error during parsing message object " + errora.name);
       return;
     }
 

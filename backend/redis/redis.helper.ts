@@ -1,4 +1,4 @@
-import { Client, Room } from "backend/types";
+import { Client, Room, ServerInfo } from "backend/types";
 import { RedisClientType } from "redis";
 import { RedisUtil } from "./redis.util";
 
@@ -7,6 +7,7 @@ export class RedisHelper {
   redisPublisher: RedisClientType;
   redisUtil: RedisUtil;
   private readonly KEY_TTL_SEC=300;
+  private readonly SERVER_TTL_SEC=3600;
   constructor(redisClient: RedisClientType, redisPublisher: RedisClientType) {
     this.redisClient = redisClient;
     this.redisPublisher = redisPublisher;
@@ -135,26 +136,23 @@ export class RedisHelper {
     await this.redisPublisher.unsubscribe(key);
   }
 
-
-  public async getAllServerIds():Promise<number[] | undefined>
+  public async addServer(serverId:string,serverInfo:ServerInfo)
   {
-    const key=this.redisUtil.getServerSetKey();
-    const res=await this.redisClient.sMembers(key);
-    if(res.length===0 || !res)
-    {
-      return undefined
-    }
-    return res.map(res=>Number(res));
+    const key=this.redisUtil.getServerSetKey(serverId);
+    const stringiFied_server = this.redisUtil.stringifyObject(serverInfo);
+    await this.redisClient.multi().hSet(key,stringiFied_server).expire(key,this.SERVER_TTL_SEC).exec();
   }
 
-  public async addServerId(serverId:number)
+  public async updateServer(serverId:string,serverInfo:Pick<ServerInfo,'activeConnections' | 'totalRooms' | 'totalMessagesSent' | 'totalMessagesReceived' | 'lastUpdatedAt'>)
   {
-    const key=this.redisUtil.getServerSetKey();
-    await this.redisClient.sAdd(key,String(serverId));
+     const key=this.redisUtil.getServerSetKey(serverId);
+    const stringiFied_server = this.redisUtil.stringifyObject(serverInfo);
+    await this.redisClient.hSet(key,stringiFied_server);
+    
   }
-  public async removeServerId(serverId:number)
+  public async removeServerId(serverId:string)
   {
-    const key=this.redisUtil.getServerSetKey();
-    await this.redisClient.sRem(key,String(serverId));
+    const key=this.redisUtil.getServerSetKey(serverId);
+    await this.redisClient.del(key);
   }
 }

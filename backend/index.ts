@@ -43,7 +43,7 @@ server.listen(3000, async () => {
     clients.commandClient,
     clients.subscriberClient,
   );
-  chatroomSocket.initialize();
+  await chatroomSocket.initialize();
 });
 
 async function connectRedisClients(): Promise<{

@@ -21,14 +21,16 @@ export class RoomManager {
   private rooms: Map<number, Set<number>>;
   private roomUtility: ChatRoomUtility;
   private redis: RedisHelper;
+  private serverId:string;
 
-  constructor(redis: RedisHelper) {
+  constructor(redis: RedisHelper,serverId:string) {
     this.clientsToWs = new Map();
     this.wsToClientId = new Map();
 
     this.rooms = new Map();
     this.roomUtility = new ChatRoomUtility();
     this.redis = redis;
+    this.serverId=serverId;
   }
 
   async createClient(ws: WebSocket) {
