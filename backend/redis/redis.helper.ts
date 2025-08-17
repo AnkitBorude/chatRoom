@@ -130,6 +130,7 @@ export class RedisHelper {
   }
 
   public async unSubscribeToChatRoomPipeline(roomId: number) {
+    console.log("Unsubscribing to global pipline "+roomId);
     const key = this.redisUtil.getRoomkey(roomId);
     await this.redisPublisher.unsubscribe(key);
   }

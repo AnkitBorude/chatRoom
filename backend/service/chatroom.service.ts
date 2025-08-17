@@ -231,6 +231,8 @@ export class RoomManager {
     }
 
     const currentRoomId = await this.isPartofAlocalRoom(client);
+    
+    console.log("🚀 ~ RoomManager ~ leaveRoom ~ currentRoomId:", currentRoomId)
 
     if (!currentRoomId) {
       //not part of any room so cannot leave invalid command
@@ -238,19 +240,28 @@ export class RoomManager {
     }
     const roomMeta = await this.isRoomExists(currentRoomId);
 
+    console.log("🚀 ~ RoomManager ~ leaveRoom ~ roomMeta:", JSON.stringify(roomMeta));
+
     //remove from the local set and
     this.rooms.get(currentRoomId)?.delete(client.id);
     const globalRoomSpaceSize = (
       await this.redis.removeClientFromRoom(currentRoomId, client.id)
     ).slice(2);
+    
+    console.log("🚀 ~ RoomManager ~ leaveRoom ~ globalRoomSpaceSize:", globalRoomSpaceSize)
 
+    
     //check if the size of local and global room
     //if empty directly delete the room and unsubcribe from the pipeline
 
     const sizeOfRoom = this.rooms.get(currentRoomId)?.size;
 
+    console.log("🚀 ~ RoomManager ~ leaveRoom ~ sizeOfRoom:", sizeOfRoom)
+
     if (!sizeOfRoom || sizeOfRoom <= 0) {
       //no one in local room
+
+      console.log("The size of local room is "+sizeOfRoom+"thus deleting this empty room"+currentRoomId);
       await this.redis.unSubscribeToChatRoomPipeline(currentRoomId);
       this.rooms.delete(currentRoomId);
       deletedLocalRoom = true;
@@ -260,6 +271,7 @@ export class RoomManager {
     //the cardinality of set of users in the room is ultimate source of truth
     if (Number(globalRoomSpaceSize[1]) <= 0) {
       //remove that room and delete the set
+      console.log("The Size of the global room is "+globalRoomSpaceSize[1]+"thus removing the empty room from global "+ currentRoomId);
       await this.redis.removeEmptyRoom(currentRoomId);
       deletedGlobalRoom = true;
     }
@@ -304,7 +316,7 @@ export class RoomManager {
         type: RequestType.LEAVE,
       });
 
-    ws.send(JSON.stringify(leftNotificationToUser));
+    ws.send(leftNotificationToUser);
   }
 
   public async sendMessage(ws: WebSocket, messageObj: ChatMessage) {
