@@ -12,7 +12,6 @@ export class ChatRoomUtility {
   public generateNewRoomId() {
     return crypto.randomInt(ROOM_ID_MIN, ROOO_ID_MAX);
   }
-
   public generateMessageString<T extends BaseMessage>(message: T) {
     return JSON.stringify(message);
   }

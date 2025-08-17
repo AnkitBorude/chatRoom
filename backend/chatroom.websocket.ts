@@ -16,16 +16,29 @@ export class ChatRoomWebsocket {
   private roomManager: RoomManager;
   private connectionLifeMap: Map<WebSocket, boolean>;
   private readonly PING_INTERVAL: number = 30000;
+  private redisHelper:RedisHelper;
   constructor(
     server: http.Server,
     client: RedisClientType,
     subscriber: RedisClientType,
   ) {
     this.websocketServer = new WebSocket.Server({ server });
-    this.roomManager = new RoomManager(new RedisHelper(client, subscriber));
+    this.redisHelper=new RedisHelper(client, subscriber);
+    //generate New ServerId
+    this.roomManager = new RoomManager(this.redisHelper);
     this.connectionLifeMap = new Map();
   }
 
+  static async createServer()
+  {
+
+  }
+
+  private async createServerId()
+  {
+    //get all serverId list from the redis
+    //generate new Server
+  }
   public initialize() {
     this.websocketServer.on("connection", (websocket) => {
       // Client connected to server

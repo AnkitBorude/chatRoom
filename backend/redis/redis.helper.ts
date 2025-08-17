@@ -134,4 +134,27 @@ export class RedisHelper {
     const key = this.redisUtil.getRoomkey(roomId);
     await this.redisPublisher.unsubscribe(key);
   }
+
+
+  public async getAllServerIds():Promise<number[] | undefined>
+  {
+    const key=this.redisUtil.getServerSetKey();
+    const res=await this.redisClient.sMembers(key);
+    if(res.length===0 || !res)
+    {
+      return undefined
+    }
+    return res.map(res=>Number(res));
+  }
+
+  public async addServerId(serverId:number)
+  {
+    const key=this.redisUtil.getServerSetKey();
+    await this.redisClient.sAdd(key,String(serverId));
+  }
+  public async removeServerId(serverId:number)
+  {
+    const key=this.redisUtil.getServerSetKey();
+    await this.redisClient.sRem(key,String(serverId));
+  }
 }

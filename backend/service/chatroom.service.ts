@@ -382,6 +382,8 @@ export class RoomManager {
     //as we do not allow empty rooms by the way
     const client = await this.getClientBySocket(ws);
 
+    console.log("Removing disconnected client from the room "+JSON.stringify(client));
+
     if (client) {
       const roomId = await this.isPartofAlocalRoom(client);
       if (roomId) {
