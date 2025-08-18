@@ -22,5 +22,5 @@ export type ServerInfo = {
   totalRooms: number;
   totalMessagesSent?: number;
   totalMessagesReceived?: number;
-  lastUpdatedAt:number
+  lastUpdatedAt: number;
 };

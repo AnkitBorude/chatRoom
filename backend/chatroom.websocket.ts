@@ -19,39 +19,38 @@ export class ChatRoomWebsocket {
   private roomManager: RoomManager;
   private connectionLifeMap: Map<WebSocket, boolean>;
   private readonly PING_INTERVAL: number = 30000;
-  private redisHelper:RedisHelper;
-  private serverId:string=crypto.randomUUID();
+  private redisHelper: RedisHelper;
+  private serverId: string = crypto.randomUUID();
   constructor(
     server: http.Server,
     client: RedisClientType,
     subscriber: RedisClientType,
   ) {
     this.websocketServer = new WebSocket.Server({ server });
-    this.redisHelper=new RedisHelper(client, subscriber);
+    this.redisHelper = new RedisHelper(client, subscriber);
     //generate New ServerId
-    this.roomManager = new RoomManager(this.redisHelper,this.serverId);
+    this.roomManager = new RoomManager(this.redisHelper, this.serverId);
     this.connectionLifeMap = new Map();
   }
   public async initialize() {
-
     const info: ServerInfo = {
-    serverId:this.serverId,
-    host: os.hostname(),
-    env: process.env.NODE_ENV || "unknown",
-    startedAt: Date.now(),
-    activeConnections: 0,
-    totalRooms: 0,
-    lastUpdatedAt:Date.now(),
-    port:3000,
-    totalMessagesReceived:0,
-    totalMessagesSent:0
-  };
+      serverId: this.serverId,
+      host: os.hostname(),
+      env: process.env.NODE_ENV || "unknown",
+      startedAt: Date.now(),
+      activeConnections: 0,
+      totalRooms: 0,
+      lastUpdatedAt: Date.now(),
+      port: 3000,
+      totalMessagesReceived: 0,
+      totalMessagesSent: 0,
+    };
 
-    this.redisHelper.addServer(this.serverId,info);
-    
-    this.websocketServer.on('listening',()=>{
+    this.redisHelper.addServer(this.serverId, info);
+
+    this.websocketServer.on("listening", () => {
       console.log("Websocket server is listening now");
-    })
+    });
     this.websocketServer.on("connection", (websocket) => {
       // Client connected to server
       this.roomManager.createClient(websocket);
@@ -105,7 +104,9 @@ export class ChatRoomWebsocket {
     } catch (error) {
       const errora = error as Error;
       console.error(error);
-      websocket.send("Server Error during parsing message object " + errora.name);
+      websocket.send(
+        "Server Error during parsing message object " + errora.name,
+      );
       return;
     }
 

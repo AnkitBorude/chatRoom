@@ -13,7 +13,6 @@ import { RequestType } from "@shared/request.enum";
 import { ChatRoomUtility } from "backend/util/chatroom.util";
 import { RedisHelper } from "backend/redis/redis.helper";
 
-
 export class RoomManager {
   //map to hold clientId to websocket at locallevel
   private clientsToWs: Map<number, WebSocket>;
@@ -21,16 +20,16 @@ export class RoomManager {
   private rooms: Map<number, Set<number>>;
   private roomUtility: ChatRoomUtility;
   private redis: RedisHelper;
-  private serverId:string;
+  private serverId: string;
 
-  constructor(redis: RedisHelper,serverId:string) {
+  constructor(redis: RedisHelper, serverId: string) {
     this.clientsToWs = new Map();
     this.wsToClientId = new Map();
 
     this.rooms = new Map();
     this.roomUtility = new ChatRoomUtility();
     this.redis = redis;
-    this.serverId=serverId;
+    this.serverId = serverId;
   }
 
   async createClient(ws: WebSocket) {
@@ -120,7 +119,10 @@ export class RoomManager {
 
     const roomIdofClient = await this.isPartofAlocalRoom(client);
 
-    console.log("🚀 ~ RoomManager ~ renameUser ~ roomIdofClient:", roomIdofClient)
+    console.log(
+      "🚀 ~ RoomManager ~ renameUser ~ roomIdofClient:",
+      roomIdofClient,
+    );
 
     if (roomIdofClient) {
       const roomNotification =
@@ -129,7 +131,7 @@ export class RoomManager {
           RequestType.RENAME,
         );
 
-        console.log("THE ROOM NOTIFICATION "+JSON.stringify(roomNotification));
+      console.log("THE ROOM NOTIFICATION " + JSON.stringify(roomNotification));
       this.broadcastLocalRoomNotification(
         roomIdofClient,
         client.id,
@@ -194,10 +196,10 @@ export class RoomManager {
       //attach publishMent to room
       //assumming no message burst in that case we would require a queue
       this.redis.subscribeToChatRoomPipeline(roomIdToJoin, (message) => {
-        const incomingMessage=this.roomUtility.retrieveUUIDandMessage(message);
-        if(incomingMessage[0]!==this.serverId)
-        {
-        this.broadcastMessage(roomIdToJoin,incomingMessage[1]);
+        const incomingMessage =
+          this.roomUtility.retrieveUUIDandMessage(message);
+        if (incomingMessage[0] !== this.serverId) {
+          this.broadcastMessage(roomIdToJoin, incomingMessage[1]);
         }
       });
     }
@@ -228,32 +230,28 @@ export class RoomManager {
     this.broadcastNotificationOnGlobal(roomIdToJoin, joinNotificationToOthers);
   }
 
-  public async leaveRoom(ws: WebSocket,clientArg?:Client) {
-    let client:Client;
-    let currentRoomId:number | undefined;
+  public async leaveRoom(ws: WebSocket, clientArg?: Client) {
+    let client: Client;
+    let currentRoomId: number | undefined;
     let deletedLocalRoom: boolean = false;
     let deletedGlobalRoom: boolean = false;
 
-    if(clientArg)
-    {
-      client=clientArg;
-      currentRoomId=client.roomId;
-    }
-    else
-    {
-       const rClient = await this.getClientBySocket(ws);
-       if (!rClient) {
-      //send the error code back to ws
-      console.log("Client does not exists thus cannot leave Room");
-      ws.send(this.roomUtility.createNotFoundMessage());
-      return;
-          }
-      client=rClient;
+    if (clientArg) {
+      client = clientArg;
+      currentRoomId = client.roomId;
+    } else {
+      const rClient = await this.getClientBySocket(ws);
+      if (!rClient) {
+        //send the error code back to ws
+        console.log("Client does not exists thus cannot leave Room");
+        ws.send(this.roomUtility.createNotFoundMessage());
+        return;
+      }
+      client = rClient;
       currentRoomId = await this.isPartofAlocalRoom(client);
     }
-    
-    
-    console.log("🚀 ~ RoomManager ~ leaveRoom ~ currentRoomId:", currentRoomId)
+
+    console.log("🚀 ~ RoomManager ~ leaveRoom ~ currentRoomId:", currentRoomId);
 
     if (!currentRoomId) {
       //not part of any room so cannot leave invalid command
@@ -261,28 +259,38 @@ export class RoomManager {
     }
     const roomMeta = await this.isRoomExists(currentRoomId);
 
-    console.log("🚀 ~ RoomManager ~ leaveRoom ~ roomMeta:", JSON.stringify(roomMeta));
+    console.log(
+      "🚀 ~ RoomManager ~ leaveRoom ~ roomMeta:",
+      JSON.stringify(roomMeta),
+    );
 
     //remove from the local set and
     this.rooms.get(currentRoomId)?.delete(client.id);
     const globalRoomSpaceSize = (
       await this.redis.removeClientFromRoom(currentRoomId, client.id)
     ).slice(2);
-    
-    console.log("🚀 ~ RoomManager ~ leaveRoom ~ globalRoomSpaceSize:", globalRoomSpaceSize)
 
-    
+    console.log(
+      "🚀 ~ RoomManager ~ leaveRoom ~ globalRoomSpaceSize:",
+      globalRoomSpaceSize,
+    );
+
     //check if the size of local and global room
     //if empty directly delete the room and unsubcribe from the pipeline
 
     const sizeOfRoom = this.rooms.get(currentRoomId)?.size;
 
-    console.log("🚀 ~ RoomManager ~ leaveRoom ~ sizeOfRoom:", sizeOfRoom)
+    console.log("🚀 ~ RoomManager ~ leaveRoom ~ sizeOfRoom:", sizeOfRoom);
 
     if (!sizeOfRoom || sizeOfRoom <= 0) {
       //no one in local room
 
-      console.log("The size of local room is "+sizeOfRoom+"thus deleting this empty room"+currentRoomId);
+      console.log(
+        "The size of local room is " +
+          sizeOfRoom +
+          "thus deleting this empty room" +
+          currentRoomId,
+      );
       await this.redis.unSubscribeToChatRoomPipeline(currentRoomId);
       this.rooms.delete(currentRoomId);
       deletedLocalRoom = true;
@@ -292,7 +300,12 @@ export class RoomManager {
     //the cardinality of set of users in the room is ultimate source of truth
     if (Number(globalRoomSpaceSize[1]) <= 0) {
       //remove that room and delete the set
-      console.log("The Size of the global room is "+globalRoomSpaceSize[1]+"thus removing the empty room from global "+ currentRoomId);
+      console.log(
+        "The Size of the global room is " +
+          globalRoomSpaceSize[1] +
+          "thus removing the empty room from global " +
+          currentRoomId,
+      );
       await this.redis.removeEmptyRoom(currentRoomId);
       deletedGlobalRoom = true;
     }
@@ -404,20 +417,22 @@ export class RoomManager {
     //as we do not allow empty rooms by the way
     const client = await this.getClientBySocket(ws);
 
-    console.log("Removing disconnected client from the room "+JSON.stringify(client));
+    console.log(
+      "Removing disconnected client from the room " + JSON.stringify(client),
+    );
 
-    console.log("Socket from the wstoClient "+this.wsToClientId.get(ws));
+    console.log("Socket from the wstoClient " + this.wsToClientId.get(ws));
     if (client) {
       const roomId = await this.isPartofAlocalRoom(client);
       if (roomId) {
         await this.leaveRoom(ws);
       }
       await this.redis.removeClient(client.id);
-      console.log("Socket from the wstoClient "+this.wsToClientId.get(ws));
+      console.log("Socket from the wstoClient " + this.wsToClientId.get(ws));
       this.wsToClientId.delete(ws);
       this.clientsToWs.delete(client.id);
     }
-    
+
     console.log("Client Disconnected");
   }
 
@@ -431,37 +446,35 @@ export class RoomManager {
       //but the global settings is the source of truth
       //that means lets suppose we removed a client using api endpoint (for like ban or something
       //the user cant access anything)
-      const client= await this.redis.getClientById(clientId);
+      const client = await this.redis.getClientById(clientId);
 
       //leaky client with no gloabal reference
-    //induced sideEffect to remove them 
-      if(!client)
-      {
+      //induced sideEffect to remove them
+      if (!client) {
         //this means client not available globally.
         //check if it was part of any available room on server
         for (const [key, set] of this.rooms) {
-            if(set.has(clientId))
-            {
-              //remove from the room also
-              console.log("User found in room removing it asap"+key);
-              //creating a client clone
-              const clientDummy:Client={
-                id:clientId,
-                createdAt:new Date(),
-                name:"Client Clone "+clientId,
-                roomId:key
-              }
+          if (set.has(clientId)) {
+            //remove from the room also
+            console.log("User found in room removing it asap" + key);
+            //creating a client clone
+            const clientDummy: Client = {
+              id: clientId,
+              createdAt: new Date(),
+              name: "Client Clone " + clientId,
+              roomId: key,
+            };
 
-              await this.leaveRoom(ws,clientDummy);
-              break;
-            }
+            await this.leaveRoom(ws, clientDummy);
+            break;
           }
-       this.wsToClientId.delete(ws);
-       this.clientsToWs.delete(clientId);
+        }
+        this.wsToClientId.delete(ws);
+        this.clientsToWs.delete(clientId);
       }
       return client;
     }
-    
+
     return undefined;
   }
 
@@ -470,9 +483,8 @@ export class RoomManager {
     if (isLocalRoom) {
       //same case may arise that room is available locally but not globally
       //gloabl settings is source truth
-      const gloablRoom=await this.isRoomExistsGlobally(roomId);
-      if(!gloablRoom)
-      {
+      const gloablRoom = await this.isRoomExistsGlobally(roomId);
+      if (!gloablRoom) {
         await this.removeLocalRoom(roomId);
       }
       return gloablRoom;
@@ -524,7 +536,7 @@ export class RoomManager {
     notification: RoomNotificationMessage | ChatMessage,
   ) {
     let message = JSON.stringify(notification);
-    message=this.roomUtility.appendUUIDtoMessage(this.serverId,message);
+    message = this.roomUtility.appendUUIDtoMessage(this.serverId, message);
     try {
       await this.redis.publishMessage(roomId, message);
     } catch (error) {
@@ -535,7 +547,6 @@ export class RoomManager {
   }
 
   private broadcastMessage(roomId: number, message: string) {
-
     this.rooms.get(roomId)?.forEach((otherClientId) => {
       this.clientsToWs.get(otherClientId)?.send(message, (error) => {
         if (error) {
@@ -550,25 +561,27 @@ export class RoomManager {
     });
   }
 
-  private async removeLocalRoom(roomId:number)
-  {
-    console.log("Room at global scope does not exists thus removing local room and participants");
-    const clientsInroom=this.rooms.get(roomId);
+  private async removeLocalRoom(roomId: number) {
+    console.log(
+      "Room at global scope does not exists thus removing local room and participants",
+    );
+    const clientsInroom = this.rooms.get(roomId);
 
-     const leaveNotificationToOthers =
-        this.roomUtility.createClientNotificationofMessage(
-          "Room "+roomId+" Does not exists removed by admin / system. Kindly exit room",
-          RequestType.LEAVE,
-        );
-      const message=JSON.stringify(leaveNotificationToOthers);
+    const leaveNotificationToOthers =
+      this.roomUtility.createClientNotificationofMessage(
+        "Room " +
+          roomId +
+          " Does not exists removed by admin / system. Kindly exit room",
+        RequestType.LEAVE,
+      );
+    const message = JSON.stringify(leaveNotificationToOthers);
     //remving client from gloabl room and sending message back;
-    clientsInroom?.forEach(async (cliendId)=>{
-      await this.redis.removeClientFromRoom(roomId,cliendId,true);
+    clientsInroom?.forEach(async (cliendId) => {
+      await this.redis.removeClientFromRoom(roomId, cliendId, true);
       this.clientsToWs.get(cliendId)?.send(message);
     });
     await this.redis.unSubscribeToChatRoomPipeline(roomId);
     await this.redis.removeEmptyRoom(roomId);
-
 
     this.rooms.delete(roomId);
   }

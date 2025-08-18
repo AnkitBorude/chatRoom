@@ -6,8 +6,8 @@ export class RedisHelper {
   redisClient: RedisClientType;
   redisPublisher: RedisClientType;
   redisUtil: RedisUtil;
-  private readonly KEY_TTL_SEC=300;
-  private readonly SERVER_TTL_SEC=3600;
+  private readonly KEY_TTL_SEC = 300;
+  private readonly SERVER_TTL_SEC = 3600;
   constructor(redisClient: RedisClientType, redisPublisher: RedisClientType) {
     this.redisClient = redisClient;
     this.redisPublisher = redisPublisher;
@@ -17,9 +17,10 @@ export class RedisHelper {
   public async createNewClient(client: Client) {
     const key = this.redisUtil.getClientkey(client.id);
     const stringiFied_client = this.redisUtil.stringifyObject(client);
-    await this.redisClient.multi()
+    await this.redisClient
+      .multi()
       .hSet(key, stringiFied_client)
-      .expire(key,this.KEY_TTL_SEC)
+      .expire(key, this.KEY_TTL_SEC)
       .exec();
   }
 
@@ -38,9 +39,8 @@ export class RedisHelper {
 
     const parsedClient: Client = JSON.parse(JSON.stringify(client));
     parsedClient.id = Number(parsedClient.id);
-    if(parsedClient.roomId)
-    {
-      parsedClient.roomId=Number(parsedClient.roomId);
+    if (parsedClient.roomId) {
+      parsedClient.roomId = Number(parsedClient.roomId);
     }
     return parsedClient;
   }
@@ -49,9 +49,10 @@ export class RedisHelper {
     //this method create new room and ads the creator in the newly created Room as well
     const key = this.redisUtil.getRoomkey(room.id);
     const stringiFied_room = this.redisUtil.stringifyObject(room);
-     await this.redisClient.multi()
+    await this.redisClient
+      .multi()
       .hSet(key, stringiFied_room)
-      .expire(key,this.KEY_TTL_SEC)
+      .expire(key, this.KEY_TTL_SEC)
       .exec();
   }
 
@@ -64,8 +65,8 @@ export class RedisHelper {
     }
     const parsedRoom: Room = JSON.parse(JSON.stringify(room));
     parsedRoom.id = Number(parsedRoom.id);
-    parsedRoom.activeUsers=Number(parsedRoom.activeUsers);
-    parsedRoom.createdBy=Number(parsedRoom.createdBy);
+    parsedRoom.activeUsers = Number(parsedRoom.activeUsers);
+    parsedRoom.createdBy = Number(parsedRoom.createdBy);
     return parsedRoom;
   }
 
@@ -80,24 +81,27 @@ export class RedisHelper {
       .hSet(clientKey, "roomId", roomId)
       .hIncrBy(roomKey, "activeUsers", 1)
       .sCard(chatRoomkey)
-      .expire(chatRoomkey,this.KEY_TTL_SEC,'NX')
+      .expire(chatRoomkey, this.KEY_TTL_SEC, "NX")
       .exec();
   }
 
   // EXEC returns an array of replies, where every element is the reply of a
   // single command in the transaction, in the same order the commands were issued.
-  public async removeClientFromRoom(roomId: number, clientId: number,isRoomRemoved?:boolean) {
+  public async removeClientFromRoom(
+    roomId: number,
+    clientId: number,
+    isRoomRemoved?: boolean,
+  ) {
     const chatRoomkey = this.redisUtil.getChatRoomKey(roomId);
     const roomKey = this.redisUtil.getRoomkey(roomId);
     const clientKey = this.redisUtil.getClientkey(clientId);
 
-    if(isRoomRemoved)
-    {
+    if (isRoomRemoved) {
       return await this.redisClient
-      .multi()
-      .sRem(chatRoomkey, [String(clientId)])
-      .hDel(clientKey, "roomId")
-      .exec();
+        .multi()
+        .sRem(chatRoomkey, [String(clientId)])
+        .hDel(clientKey, "roomId")
+        .exec();
     }
     return await this.redisClient
       .multi()
@@ -139,28 +143,38 @@ export class RedisHelper {
   }
 
   public async unSubscribeToChatRoomPipeline(roomId: number) {
-    console.log("Unsubscribing to global pipline "+roomId);
+    console.log("Unsubscribing to global pipline " + roomId);
     const key = this.redisUtil.getRoomkey(roomId);
     await this.redisPublisher.unsubscribe(key);
   }
 
-  public async addServer(serverId:string,serverInfo:ServerInfo)
-  {
-    const key=this.redisUtil.getServerSetKey(serverId);
+  public async addServer(serverId: string, serverInfo: ServerInfo) {
+    const key = this.redisUtil.getServerSetKey(serverId);
     const stringiFied_server = this.redisUtil.stringifyObject(serverInfo);
-    await this.redisClient.multi().hSet(key,stringiFied_server).expire(key,this.SERVER_TTL_SEC).exec();
+    await this.redisClient
+      .multi()
+      .hSet(key, stringiFied_server)
+      .expire(key, this.SERVER_TTL_SEC)
+      .exec();
   }
 
-  public async updateServer(serverId:string,serverInfo:Pick<ServerInfo,'activeConnections' | 'totalRooms' | 'totalMessagesSent' | 'totalMessagesReceived' | 'lastUpdatedAt'>)
-  {
-     const key=this.redisUtil.getServerSetKey(serverId);
+  public async updateServer(
+    serverId: string,
+    serverInfo: Pick<
+      ServerInfo,
+      | "activeConnections"
+      | "totalRooms"
+      | "totalMessagesSent"
+      | "totalMessagesReceived"
+      | "lastUpdatedAt"
+    >,
+  ) {
+    const key = this.redisUtil.getServerSetKey(serverId);
     const stringiFied_server = this.redisUtil.stringifyObject(serverInfo);
-    await this.redisClient.hSet(key,stringiFied_server);
-    
+    await this.redisClient.hSet(key, stringiFied_server);
   }
-  public async removeServerId(serverId:string)
-  {
-    const key=this.redisUtil.getServerSetKey(serverId);
+  public async removeServerId(serverId: string) {
+    const key = this.redisUtil.getServerSetKey(serverId);
     await this.redisClient.del(key);
   }
 }
