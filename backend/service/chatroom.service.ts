@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { Client, Room } from "backend/types";
+import { Client, Room, ServerStatsInfo } from "backend/types";
 import {
   ChatMessage,
   ConnectionMessage,
@@ -21,6 +21,9 @@ export class RoomManager {
   private roomUtility: ChatRoomUtility;
   private redis: RedisHelper;
   private serverId: string;
+  private iMessageCounter;
+  private sMessageCounter;
+  private totalRoomsCreated:number;
 
   constructor(redis: RedisHelper, serverId: string) {
     this.clientsToWs = new Map();
@@ -30,8 +33,23 @@ export class RoomManager {
     this.roomUtility = new ChatRoomUtility();
     this.redis = redis;
     this.serverId = serverId;
+    this.iMessageCounter=this.sMessageCounter=0;
+    this.totalRoomsCreated=0;
   }
 
+  public getStatistics():ServerStatsInfo
+  {
+    const totalCon=Math.max(this.clientsToWs.size,this.wsToClientId.size);
+    return {
+     activeConnections:totalCon,
+     totalRooms:this.rooms.size,
+     totalMessagesReceived:this.iMessageCounter,
+     totalMessagesSent:this.sMessageCounter,
+     leakyConnections:totalCon-Math.min(this.clientsToWs.size,this.wsToClientId.size),
+     totalRoomsCreated:this.totalRoomsCreated,
+     lastUpdatedAt:Date.now()
+    }
+  }
   async createClient(ws: WebSocket) {
     const tmp_id = this.roomUtility.generateNewClientId();
     this.clientsToWs.set(tmp_id, ws);
@@ -95,6 +113,8 @@ export class RoomManager {
     ws.send(responseString);
 
     await this.joinRoom(ws, room.id);
+
+    this.totalRoomsCreated++;
   }
 
   public async renameUser(ws: WebSocket, message: RenameMessage) {
@@ -408,6 +428,7 @@ export class RoomManager {
         { messageId },
       );
     ws.send(JSON.stringify(successNotificationToClient));
+    this.sMessageCounter++;
   }
 
   public async removeClient(ws: WebSocket) {
@@ -559,6 +580,7 @@ export class RoomManager {
         }
       });
     });
+    this.sMessageCounter++;
   }
 
   private async removeLocalRoom(roomId: number) {
@@ -567,18 +589,16 @@ export class RoomManager {
     );
     const clientsInroom = this.rooms.get(roomId);
 
-    const leaveNotificationToOthers =
-      this.roomUtility.createClientNotificationofMessage(
-        "Room " +
-          roomId +
-          " Does not exists removed by admin / system. Kindly exit room",
-        RequestType.LEAVE,
-      );
-    const message = JSON.stringify(leaveNotificationToOthers);
+    const leftNotificationToUser =
+      this.roomUtility.generateMessageString<LeaveMessage>({
+        message: `Your current room has been removed by ther server / system kindly connect again`,
+        roomId,
+        type: RequestType.LEAVE,
+      });
     //remving client from gloabl room and sending message back;
     clientsInroom?.forEach(async (cliendId) => {
       await this.redis.removeClientFromRoom(roomId, cliendId, true);
-      this.clientsToWs.get(cliendId)?.send(message);
+      this.clientsToWs.get(cliendId)?.send(leftNotificationToUser);
     });
     await this.redis.unSubscribeToChatRoomPipeline(roomId);
     await this.redis.removeEmptyRoom(roomId);

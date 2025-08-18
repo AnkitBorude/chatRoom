@@ -18,7 +18,8 @@ export class ChatRoomWebsocket {
   private websocketServer: WebSocket.Server;
   private roomManager: RoomManager;
   private connectionLifeMap: Map<WebSocket, boolean>;
-  private readonly PING_INTERVAL: number = 30000;
+  private readonly PING_INTERVAL_SEC: number = 30;
+  private readonly SERVER_UPDATE_INTERVAL:number=30;
   private redisHelper: RedisHelper;
   private serverId: string = crypto.randomUUID();
   constructor(
@@ -44,6 +45,8 @@ export class ChatRoomWebsocket {
       port: 3000,
       totalMessagesReceived: 0,
       totalMessagesSent: 0,
+      leakyConnections:0,
+      totalRoomsCreated:0
     };
 
     this.redisHelper.addServer(this.serverId, info);
@@ -89,10 +92,26 @@ export class ChatRoomWebsocket {
           map.delete(socket);
         }
       });
-    }, this.PING_INTERVAL);
+    }, this.PING_INTERVAL_SEC*1000);
 
+
+    const serverUpdateInterval=setInterval(async () => {
+      
+      const stats=this.roomManager.getStatistics();
+      try{
+      await this.redisHelper.updateServerStats(this.serverId,stats);
+      }catch(error){
+        console.log("Error while updating server stats in redis");
+        console.error(error);
+      }finally{
+        console.log("Update Sent to server");
+      }
+
+    }, this.SERVER_UPDATE_INTERVAL*1000);
+    
     this.websocketServer.on("close", async () => {
       clearInterval(pingInterval);
+      clearInterval(serverUpdateInterval);
       await this.redisHelper.removeServerId(this.serverId);
     });
   }

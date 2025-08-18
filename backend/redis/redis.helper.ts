@@ -1,4 +1,4 @@
-import { Client, Room, ServerInfo } from "backend/types";
+import { Client, Room, ServerInfo, ServerStatsInfo } from "backend/types";
 import { RedisClientType } from "redis";
 import { RedisUtil } from "./redis.util";
 
@@ -158,19 +158,12 @@ export class RedisHelper {
       .exec();
   }
 
-  public async updateServer(
+  public async updateServerStats(
     serverId: string,
-    serverInfo: Pick<
-      ServerInfo,
-      | "activeConnections"
-      | "totalRooms"
-      | "totalMessagesSent"
-      | "totalMessagesReceived"
-      | "lastUpdatedAt"
-    >,
+    serverStats:ServerStatsInfo
   ) {
     const key = this.redisUtil.getServerSetKey(serverId);
-    const stringiFied_server = this.redisUtil.stringifyObject(serverInfo);
+    const stringiFied_server = this.redisUtil.stringifyObject(serverStats);
     await this.redisClient.hSet(key, stringiFied_server);
   }
   public async removeServerId(serverId: string) {
