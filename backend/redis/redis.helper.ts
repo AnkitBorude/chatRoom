@@ -160,7 +160,7 @@ export class RedisHelper {
 
   public async updateServerStats(
     serverId: string,
-    serverStats:ServerStatsInfo
+    serverStats: ServerStatsInfo,
   ) {
     const key = this.redisUtil.getServerSetKey(serverId);
     const stringiFied_server = this.redisUtil.stringifyObject(serverStats);

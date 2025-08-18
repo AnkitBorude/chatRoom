@@ -23,7 +23,7 @@ export class RoomManager {
   private serverId: string;
   private iMessageCounter;
   private sMessageCounter;
-  private totalRoomsCreated:number;
+  private totalRoomsCreated: number;
 
   constructor(redis: RedisHelper, serverId: string) {
     this.clientsToWs = new Map();
@@ -33,22 +33,22 @@ export class RoomManager {
     this.roomUtility = new ChatRoomUtility();
     this.redis = redis;
     this.serverId = serverId;
-    this.iMessageCounter=this.sMessageCounter=0;
-    this.totalRoomsCreated=0;
+    this.iMessageCounter = this.sMessageCounter = 0;
+    this.totalRoomsCreated = 0;
   }
 
-  public getStatistics():ServerStatsInfo
-  {
-    const totalCon=Math.max(this.clientsToWs.size,this.wsToClientId.size);
+  public getStatistics(): ServerStatsInfo {
+    const totalCon = Math.max(this.clientsToWs.size, this.wsToClientId.size);
     return {
-     activeConnections:totalCon,
-     totalRooms:this.rooms.size,
-     totalMessagesReceived:this.iMessageCounter,
-     totalMessagesSent:this.sMessageCounter,
-     leakyConnections:totalCon-Math.min(this.clientsToWs.size,this.wsToClientId.size),
-     totalRoomsCreated:this.totalRoomsCreated,
-     lastUpdatedAt:Date.now()
-    }
+      activeConnections: totalCon,
+      totalRooms: this.rooms.size,
+      totalMessagesReceived: this.iMessageCounter,
+      totalMessagesSent: this.sMessageCounter,
+      leakyConnections:
+        totalCon - Math.min(this.clientsToWs.size, this.wsToClientId.size),
+      totalRoomsCreated: this.totalRoomsCreated,
+      lastUpdatedAt: Date.now(),
+    };
   }
   async createClient(ws: WebSocket) {
     const tmp_id = this.roomUtility.generateNewClientId();

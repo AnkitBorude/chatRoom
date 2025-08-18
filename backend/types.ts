@@ -23,9 +23,17 @@ export type ServerInfo = {
   totalMessagesSent?: number;
   totalMessagesReceived?: number;
   lastUpdatedAt: number;
-  leakyConnections?:number;
-  totalRoomsCreated?:number
+  leakyConnections?: number;
+  totalRoomsCreated?: number;
 };
 
-export type ServerStatsInfo=Pick<ServerInfo,'activeConnections' | 'lastUpdatedAt' | 'leakyConnections' | 'totalRoomsCreated' |
- 'totalMessagesReceived' | 'totalRooms' | 'totalMessagesSent'>
+export type ServerStatsInfo = Pick<
+  ServerInfo,
+  | "activeConnections"
+  | "lastUpdatedAt"
+  | "leakyConnections"
+  | "totalRoomsCreated"
+  | "totalMessagesReceived"
+  | "totalRooms"
+  | "totalMessagesSent"
+>;
