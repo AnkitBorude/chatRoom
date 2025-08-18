@@ -86,11 +86,19 @@ export class RedisHelper {
 
   // EXEC returns an array of replies, where every element is the reply of a
   // single command in the transaction, in the same order the commands were issued.
-  public async removeClientFromRoom(roomId: number, clientId: number) {
+  public async removeClientFromRoom(roomId: number, clientId: number,isRoomRemoved?:boolean) {
     const chatRoomkey = this.redisUtil.getChatRoomKey(roomId);
     const roomKey = this.redisUtil.getRoomkey(roomId);
     const clientKey = this.redisUtil.getClientkey(clientId);
 
+    if(isRoomRemoved)
+    {
+      return await this.redisClient
+      .multi()
+      .sRem(chatRoomkey, [String(clientId)])
+      .hDel(clientKey, "roomId")
+      .exec();
+    }
     return await this.redisClient
       .multi()
       .sRem(chatRoomkey, [String(clientId)])
