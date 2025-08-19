@@ -6,7 +6,7 @@ export class RedisUtil {
 
   constructor() {}
 
-  public getClientkey(key: number | string ) {
+  public getClientkey(key: number | string) {
     return this.CLIENT_KEY_INITIALIZER.replace("<id>", key.toString());
   }
 

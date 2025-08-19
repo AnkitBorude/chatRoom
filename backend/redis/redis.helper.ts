@@ -1,7 +1,11 @@
 import { Client, Room, ServerInfo, ServerStatsInfo } from "backend/types";
 import { RedisClientType } from "redis";
 import { RedisUtil } from "./redis.util";
-import { CLIENT_REDIS_TTL_SEC, ROOM_REDIS_TTL_SEC, SERVER_STAT_REDIS_TTL_SEC } from "@shared/const";
+import {
+  CLIENT_REDIS_TTL_SEC,
+  ROOM_REDIS_TTL_SEC,
+  SERVER_STAT_REDIS_TTL_SEC,
+} from "@shared/const";
 
 export class RedisHelper {
   redisClient: RedisClientType;
@@ -80,7 +84,7 @@ export class RedisHelper {
       .hSet(clientKey, "roomId", roomId)
       .hIncrBy(roomKey, "activeUsers", 1)
       .sCard(chatRoomkey)
-      .expire(chatRoomkey,ROOM_REDIS_TTL_SEC, "NX")
+      .expire(chatRoomkey, ROOM_REDIS_TTL_SEC, "NX")
       .exec();
   }
 

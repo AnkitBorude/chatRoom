@@ -1,5 +1,12 @@
 import { appendInfoAlert } from "./dom.client.js";
-import { CreateMessage,ChatMessage,JoinMessage,LeaveMessage,RenameMessage,BaseMessage} from "@shared/message.type.js";
+import {
+  CreateMessage,
+  ChatMessage,
+  JoinMessage,
+  LeaveMessage,
+  RenameMessage,
+  BaseMessage,
+} from "@shared/message.type.js";
 import { incomingMessageEvent } from "./state.js";
 
 let socket: WebSocket;

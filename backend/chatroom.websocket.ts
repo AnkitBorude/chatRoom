@@ -23,7 +23,7 @@ export class ChatRoomWebsocket {
   private readonly PING_INTERVAL_SEC: number = 30;
   private redisHelper: RedisHelper;
   private serverId: string = crypto.randomUUID();
-  private adminController:AdminController | undefined;
+  private adminController: AdminController | undefined;
   constructor(
     server: http.Server,
     client: RedisClientType,
@@ -34,7 +34,7 @@ export class ChatRoomWebsocket {
     //generate New ServerId
     this.roomManager = new RoomManager(this.redisHelper, this.serverId);
     this.connectionLifeMap = new Map();
-    this.adminController=AdminController.getInstance(server,client);
+    this.adminController = AdminController.getInstance(server, client);
   }
   public async initialize() {
     const info: ServerInfo = {
@@ -115,7 +115,7 @@ export class ChatRoomWebsocket {
       await this.redisHelper.removeServerId(this.serverId);
     });
 
-    if(this.adminController){
+    if (this.adminController) {
       console.log("Container has admin endpoints accessible..");
       this.adminController.startListening(this.serverId);
     }

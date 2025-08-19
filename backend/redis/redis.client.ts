@@ -1,4 +1,7 @@
-import { MAX_REDIS_HEARTBEAT_INTERVAL_SEC, MAX_REDIS_HEARTBEAT_RETRY } from "@shared/const";
+import {
+  MAX_REDIS_HEARTBEAT_INTERVAL_SEC,
+  MAX_REDIS_HEARTBEAT_RETRY,
+} from "@shared/const";
 import { createClient, RedisClientType } from "redis";
 
 export class RedisClientWrapper {
@@ -29,9 +32,7 @@ export class RedisClientWrapper {
           );
           process.exit(-1);
         }
-        console.log(
-          "🔄 Redis is reconnecting..."
-        );
+        console.log("🔄 Redis is reconnecting...");
         this.RETRY--;
       });
     }
@@ -44,7 +45,7 @@ export class RedisClientWrapper {
     }
     try {
       await this.client?.connect();
-      this.startHeartbeat(MAX_REDIS_HEARTBEAT_INTERVAL_SEC*1000);
+      this.startHeartbeat(MAX_REDIS_HEARTBEAT_INTERVAL_SEC * 1000);
 
       return this.client;
     } catch (error) {

@@ -39,8 +39,7 @@ export type ServerStatsInfo = Pick<
 >;
 
 export enum TOKENTYPE {
-  ADMIN_USER='ADMIN_USER',
-  ADMIN_PASS='ADMIN_PASS',
-  JWT_SECRET='JWT_SECRET'
+  ADMIN_USER = "ADMIN_USER",
+  ADMIN_PASS = "ADMIN_PASS",
+  JWT_SECRET = "JWT_SECRET",
 }
-

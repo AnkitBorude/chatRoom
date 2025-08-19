@@ -1,7 +1,10 @@
 import { sendMessage } from "./socket.client.js";
 import { ChatMessage } from "@shared/message.type.js";
-import { ElementType} from "./types.client.js";
-import { MAX_MESSAGE_RETRY, MESSAGE_RETRY_INTERVAL_SEC } from "@shared/const.js";
+import { ElementType } from "./types.client.js";
+import {
+  MAX_MESSAGE_RETRY,
+  MESSAGE_RETRY_INTERVAL_SEC,
+} from "@shared/const.js";
 
 export type messagePending = {
   message: Partial<ChatMessage>;
@@ -37,7 +40,7 @@ export function retryMessage(id: string, message: Partial<ChatMessage>) {
     retry: pedingMessageMetadata.retry - 1,
     timeout: setTimeout(() => {
       retryMessage(id, message);
-    }, MESSAGE_RETRY_INTERVAL_SEC*1000),
+    }, MESSAGE_RETRY_INTERVAL_SEC * 1000),
   });
   sendMessage(message);
 }
@@ -47,13 +50,16 @@ export function clearPendingACKMessages() {
     pendingMessages.delete(key);
   }
 }
-export function trackPendingMessageACK(id: string, message: Partial<ChatMessage>) {
+export function trackPendingMessageACK(
+  id: string,
+  message: Partial<ChatMessage>,
+) {
   const metadata: messagePending = {
     message,
     retry: MAX_MESSAGE_RETRY,
     timeout: setTimeout(() => {
       retryMessage(id, message);
-    }, MESSAGE_RETRY_INTERVAL_SEC*1000),
+    }, MESSAGE_RETRY_INTERVAL_SEC * 1000),
   };
   pendingMessages.set(id, metadata);
 }

@@ -1,4 +1,11 @@
-import { CLIENT_BANNED_CODE, MAX_MESSAGE_LENGTH, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, ROOM_ID_MIN, ROOO_ID_MAX } from "@shared/const.js";
+import {
+  CLIENT_BANNED_CODE,
+  MAX_MESSAGE_LENGTH,
+  MAX_ROOM_NAME_LENGTH,
+  MAX_USERNAME_LENGTH,
+  ROOM_ID_MIN,
+  ROOO_ID_MAX,
+} from "@shared/const.js";
 import {
   createRoom,
   leaveRoom,
@@ -17,10 +24,18 @@ import {
 import {
   ButtonHandlerMap,
   ElementType,
-  InputBoxTypes
+  InputBoxTypes,
 } from "./types.client.js";
 
-import { CreateMessage,ChatMessage,ConnectionMessage,JoinMessage,LeaveMessage,RenameMessage,RoomNotificationMessage } from "@shared/message.type.js";
+import {
+  CreateMessage,
+  ChatMessage,
+  ConnectionMessage,
+  JoinMessage,
+  LeaveMessage,
+  RenameMessage,
+  RoomNotificationMessage,
+} from "@shared/message.type.js";
 import { RequestType } from "@shared/request.enum.js";
 const MESSAGE_BOX = document.getElementById("messageBox");
 const USERNAME_INPUT_DIV: HTMLInputElement = document.getElementById(
@@ -191,7 +206,7 @@ export function JoinRoombtnHandler() {
     return;
   }
   const sRoomId = +sanitizeNumber(roomId);
-  if (sRoomId <= ROOM_ID_MIN|| sRoomId >= ROOO_ID_MAX) {
+  if (sRoomId <= ROOM_ID_MIN || sRoomId >= ROOO_ID_MAX) {
     alert("Room Id should be between 1 to 1000");
     return;
   }
@@ -215,7 +230,7 @@ export function CreateRoombtnHandler() {
   }
   const sRoomName = sanitizeText(roomName);
   if (sRoomName.length > MAX_ROOM_NAME_LENGTH) {
-    alert("Room name cannot be greater than "+MAX_ROOM_NAME_LENGTH);
+    alert("Room name cannot be greater than " + MAX_ROOM_NAME_LENGTH);
     return;
   }
   const payload: Partial<CreateMessage> = {
@@ -264,7 +279,6 @@ export function SendMessagebtnHandler() {
 }
 
 export function RenamebtnHandler() {
-
   const btn = document.getElementById("updateUsernamebtn");
 
   if (btn && USERNAME_INPUT_DIV) {
@@ -351,7 +365,7 @@ incomingMessageEvent.addEventListener(
           const metadata = pendingMessages.get(messageId);
           if (metadata) {
             clearTimeout(metadata.timeout);
-            appendOwnMessageBubble(metadata.message.message ?? 'No Message');
+            appendOwnMessageBubble(metadata.message.message ?? "No Message");
             pendingMessages.delete(messageId);
             return;
           }
@@ -460,7 +474,7 @@ USERNAME_INPUT_DIV.addEventListener("keydown", (e) => {
     } else {
       const susername = sanitizeText(userName);
       if (susername.length > MAX_USERNAME_LENGTH) {
-        alert("New Username cannot be greater than "+MAX_USERNAME_LENGTH);
+        alert("New Username cannot be greater than " + MAX_USERNAME_LENGTH);
       } else {
         const payload: Partial<RenameMessage> = {
           type: RequestType.RENAME,

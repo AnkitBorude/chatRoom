@@ -1,54 +1,58 @@
-import http from 'http';
-import { JWTTokenManager } from './jwt.util';
-import { TOKENTYPE } from 'backend/types';
-import { AdminHelperUtility } from './admin.util';
-import { RedisAdminHelper } from './redis.admin';
-import { RedisClientType } from 'redis';
+import http from "http";
+import { JWTTokenManager } from "./jwt.util";
+import { TOKENTYPE } from "backend/types";
+import { AdminHelperUtility } from "./admin.util";
+import { RedisAdminHelper } from "./redis.admin";
+import { RedisClientType } from "redis";
 
-export class AdminController{
+export class AdminController {
+  private serverId: string = "";
+  private static REQUIRED_ENV_VARIABLES = [
+    "ADMIN_USER",
+    "ADMIN_PASS",
+    "JWT_SECRET",
+  ];
+  private static environment: Record<TOKENTYPE, string>;
 
-    private serverId:string="";
-    private static REQUIRED_ENV_VARIABLES=[
-        'ADMIN_USER',
-        'ADMIN_PASS',
-        'JWT_SECRET'
-    ];
-    private static environment:Record<TOKENTYPE,string>;
+  private tokenManager: JWTTokenManager;
+  private adminHelper: AdminHelperUtility;
+  private redis: RedisAdminHelper;
+  private constructor(
+    private server: http.Server,
+    redisClient: RedisClientType,
+  ) {
+    this.tokenManager = new JWTTokenManager(AdminController.environment);
+    this.adminHelper = new AdminHelperUtility();
+    this.redis = new RedisAdminHelper(redisClient);
+  }
+  static getInstance(
+    server: http.Server,
+    redisClient: RedisClientType,
+  ): AdminController | undefined {
+    Object.keys(TOKENTYPE).forEach((variable) => {
+      if (!process.env[variable]) {
+        console.log(
+          "enviroment variable " +
+            variable +
+            " Not found thus restricted admin control",
+        );
+        return undefined;
+      }
+      this.environment[variable as TOKENTYPE] = process.env[variable];
+    });
+    Object.freeze(this.environment);
 
-    private tokenManager:JWTTokenManager;
-    private adminHelper:AdminHelperUtility;
-    private redis:RedisAdminHelper;
-    private constructor(private server:http.Server,redisClient:RedisClientType){
-        this.tokenManager=new JWTTokenManager(AdminController.environment);
-        this.adminHelper=new AdminHelperUtility();
-        this.redis=new RedisAdminHelper(redisClient);
-    }
-    static getInstance(server:http.Server,redisClient:RedisClientType):AdminController | undefined
-    {
+    return new AdminController(server, redisClient);
+  }
 
-        Object.keys(TOKENTYPE).forEach((variable)=>{
-            if(!process.env[variable])
-            {
-                console.log("enviroment variable "+variable+" Not found thus restricted admin control");
-                return undefined;
-            }
-            this.environment[variable as TOKENTYPE]=process.env[variable];
-        });
-        Object.freeze(this.environment);
-
-        return new AdminController(server,redisClient);
-    }
-
-    public startListening(serverId:string)
-    {
-        this.serverId=serverId;
-        this.server.on('request',(req,res)=>{
-        
-        if (req.url === "/admin/login" && req.method === "POST") {
+  public startListening(serverId: string) {
+    this.serverId = serverId;
+    this.server.on("request", (req, res) => {
+      if (req.url === "/admin/login" && req.method === "POST") {
         return this.loginAdmin(req, res);
       }
 
-    //   if (!(await this.checkAuthAndRate(req, res))) return;
+      //   if (!(await this.checkAuthAndRate(req, res))) return;
 
       if (req.url === "/admin/servers" && req.method === "GET") {
         return this.getAllServerInfo(res);
@@ -88,49 +92,53 @@ export class AdminController{
 
       // if any request other than this just ignore
       return;
-        });
-    }
-
-   private async loginAdmin(req: http.IncomingMessage, res: http.ServerResponse) {
-    let body;
-  try {
-    body = await this.adminHelper.getBody(req);
-  } catch (err) {
-        if(String(err)==="413")
-        {
-    // payload was too large or invalid JSON
-    res.writeHead(413).end("payload was too large ");
-    return;
-    }
-      res.writeHead(400).end("invalid JSON");
-    return;
+    });
   }
+
+  private async loginAdmin(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ) {
+    let body;
+    try {
+      body = await this.adminHelper.getBody(req);
+    } catch (err) {
+      if (String(err) === "413") {
+        // payload was too large or invalid JSON
+        res.writeHead(413).end("payload was too large ");
+        return;
+      }
+      res.writeHead(400).end("invalid JSON");
+      return;
+    }
 
     if (
       body.username === AdminController.environment.ADMIN_USER &&
       body.password === AdminController.environment.ADMIN_PASS
     ) {
-      const token = this.tokenManager.signToken(body.username,this.serverId);
+      const token = this.tokenManager.signToken(body.username, this.serverId);
       return res.end(JSON.stringify({ token }));
     }
     res.writeHead(401).end("invalid credentials");
-    }
-    
-     
+  }
 
-    private async deleteClient(res: http.ServerResponse, id: number) {
-        const totalRemoved=await this.redis.removeClient(Number(id));
-        res.writeHead(200).end(JSON.stringify({ totalRemoved,message:'Client removed'}));
-    }
+  private async deleteClient(res: http.ServerResponse, id: number) {
+    const totalRemoved = await this.redis.removeClient(Number(id));
+    res
+      .writeHead(200)
+      .end(JSON.stringify({ totalRemoved, message: "Client removed" }));
+  }
 
-    private async deleteRoom(res: http.ServerResponse, id: number) {
-    const totalRemoved=await this.redis.removeRoom(Number(id));
-     res.writeHead(200).end(JSON.stringify({ totalRemoved,message:'Room removed'}));
-    }
+  private async deleteRoom(res: http.ServerResponse, id: number) {
+    const totalRemoved = await this.redis.removeRoom(Number(id));
+    res
+      .writeHead(200)
+      .end(JSON.stringify({ totalRemoved, message: "Room removed" }));
+  }
 
-    private async getRoom(res: http.ServerResponse, id: number) {
+  private async getRoom(res: http.ServerResponse, id: number) {
     const data = await this.redis.getRoom(id);
-     if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0) {
       return res.writeHead(404).end("room not found");
     }
     res.writeHead(200).end(JSON.stringify(data));
@@ -145,22 +153,18 @@ export class AdminController{
   }
 
   private async getAllServerInfo(res: http.ServerResponse) {
-  // first get all serverIds in the set
-  const data=await this.redis.getAllServers();
-  res.writeHead(200).end(JSON.stringify(data));
-}
+    // first get all serverIds in the set
+    const data = await this.redis.getAllServers();
+    res.writeHead(200).end(JSON.stringify(data));
+  }
 
-private async getAllClients(res: http.ServerResponse)
-{
-    const data=await this.redis.getAllClientIds();
-    res.writeHead(200).end(JSON.stringify({client_ids:data}));
-}
+  private async getAllClients(res: http.ServerResponse) {
+    const data = await this.redis.getAllClientIds();
+    res.writeHead(200).end(JSON.stringify({ client_ids: data }));
+  }
 
-private async getAllRooms(res: http.ServerResponse)
-{
-    const data=await this.redis.getAllRoomIds();
-    res.writeHead(200).end(JSON.stringify({room_ids:data}));
-}
-
-
+  private async getAllRooms(res: http.ServerResponse) {
+    const data = await this.redis.getAllRoomIds();
+    res.writeHead(200).end(JSON.stringify({ room_ids: data }));
+  }
 }
