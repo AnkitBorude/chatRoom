@@ -34,7 +34,7 @@ export class ChatRoomWebsocket {
     //generate New ServerId
     this.roomManager = new RoomManager(this.redisHelper, this.serverId);
     this.connectionLifeMap = new Map();
-    this.adminController=AdminController.getInstance(server);
+    this.adminController=AdminController.getInstance(server,client);
   }
   public async initialize() {
     const info: ServerInfo = {

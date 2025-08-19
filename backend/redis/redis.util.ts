@@ -6,11 +6,11 @@ export class RedisUtil {
 
   constructor() {}
 
-  public getClientkey(key: number) {
+  public getClientkey(key: number | string ) {
     return this.CLIENT_KEY_INITIALIZER.replace("<id>", key.toString());
   }
 
-  public getRoomkey(key: number) {
+  public getRoomkey(key: number | string) {
     return this.ROOM_KEY_INITIALIZER.replace("<id>", key.toString());
   }
 

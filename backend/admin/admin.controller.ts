@@ -2,6 +2,8 @@ import http from 'http';
 import { JWTTokenManager } from './jwt.util';
 import { TOKENTYPE } from 'backend/types';
 import { AdminHelperUtility } from './admin.util';
+import { RedisAdminHelper } from './redis.admin';
+import { RedisClientType } from 'redis';
 
 export class AdminController{
 
@@ -15,11 +17,13 @@ export class AdminController{
 
     private tokenManager:JWTTokenManager;
     private adminHelper:AdminHelperUtility;
-    private constructor(private server:http.Server){
+    private redis:RedisAdminHelper;
+    private constructor(private server:http.Server,redisClient:RedisClientType){
         this.tokenManager=new JWTTokenManager(AdminController.environment);
         this.adminHelper=new AdminHelperUtility();
+        this.redis=new RedisAdminHelper(redisClient);
     }
-    static getInstance(server:http.Server):AdminController | undefined
+    static getInstance(server:http.Server,redisClient:RedisClientType):AdminController | undefined
     {
 
         Object.keys(TOKENTYPE).forEach((variable)=>{
@@ -32,7 +36,7 @@ export class AdminController{
         });
         Object.freeze(this.environment);
 
-        return new AdminController(server);
+        return new AdminController(server,redisClient);
     }
 
     public startListening(serverId:string)
@@ -44,40 +48,42 @@ export class AdminController{
         return this.loginAdmin(req, res);
       }
 
+    //   if (!(await this.checkAuthAndRate(req, res))) return;
+
       if (req.url === "/admin/servers" && req.method === "GET") {
-        return this.getServers(req, res);
+        return this.getAllServerInfo(res);
       }
 
       if (req.url === "/admin/rooms" && req.method === "GET") {
-        return this.getRooms(req, res);
+        return this.getAllRooms(res);
       }
 
       if (req.url === "/admin/clients" && req.method === "GET") {
-        return this.getClients(req, res);
+        return this.getAllClients(res);
       }
 
       // DELETE /admin/client/:id
       if (req.url?.startsWith("/admin/client/") && req.method === "DELETE") {
         const id = parseInt(req.url.split("/").pop()!);
-        return this.deleteClient(req, res, id);
+        return this.deleteClient(res, id);
       }
 
       // DELETE /admin/room/:id
       if (req.url?.startsWith("/admin/room/") && req.method === "DELETE") {
         const id = parseInt(req.url.split("/").pop()!);
-        return this.deleteRoom(req, res, id);
+        return this.deleteRoom(res, id);
       }
 
       // GET /admin/room/:id
       if (req.url?.startsWith("/admin/room/") && req.method === "GET") {
         const id = parseInt(req.url.split("/").pop()!);
-        return this.getRoom(req, res, id);
+        return this.getRoom(res, id);
       }
 
       // GET /admin/client/:id
       if (req.url?.startsWith("/admin/client/") && req.method === "GET") {
         const id = parseInt(req.url.split("/").pop()!);
-        return this.getClient(req, res, id);
+        return this.getClient(res, id);
       }
 
       // if any request other than this just ignore
@@ -108,7 +114,53 @@ export class AdminController{
       return res.end(JSON.stringify({ token }));
     }
     res.writeHead(401).end("invalid credentials");
+    }
+    
+     
+
+    private async deleteClient(res: http.ServerResponse, id: number) {
+        const totalRemoved=await this.redis.removeClient(Number(id));
+        res.writeHead(200).end(JSON.stringify({ totalRemoved,message:'Client removed'}));
+    }
+
+    private async deleteRoom(res: http.ServerResponse, id: number) {
+    const totalRemoved=await this.redis.removeRoom(Number(id));
+     res.writeHead(200).end(JSON.stringify({ totalRemoved,message:'Room removed'}));
+    }
+
+    private async getRoom(res: http.ServerResponse, id: number) {
+    const data = await this.redis.getRoom(id);
+     if (Object.keys(data).length === 0) {
+      return res.writeHead(404).end("room not found");
+    }
+    res.writeHead(200).end(JSON.stringify(data));
   }
-    
-    
+
+  private async getClient(res: http.ServerResponse, id: number) {
+    const data = await this.redis.getClient(id);
+    if (Object.keys(data).length === 0) {
+      return res.writeHead(404).end("client not found");
+    }
+    res.writeHead(200).end(JSON.stringify(data));
+  }
+
+  private async getAllServerInfo(res: http.ServerResponse) {
+  // first get all serverIds in the set
+  const data=await this.redis.getAllServers();
+  res.writeHead(200).end(JSON.stringify(data));
+}
+
+private async getAllClients(res: http.ServerResponse)
+{
+    const data=await this.redis.getAllClientIds();
+    res.writeHead(200).end(JSON.stringify({client_ids:data}));
+}
+
+private async getAllRooms(res: http.ServerResponse)
+{
+    const data=await this.redis.getAllRoomIds();
+    res.writeHead(200).end(JSON.stringify({room_ids:data}));
+}
+
+
 }
