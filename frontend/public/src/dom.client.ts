@@ -1,3 +1,4 @@
+import { CLIENT_BANNED_CODE, MAX_MESSAGE_LENGTH, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, ROOM_ID_MIN, ROOO_ID_MAX } from "@shared/const.js";
 import {
   createRoom,
   leaveRoom,
@@ -15,18 +16,12 @@ import {
 } from "./state.js";
 import {
   ButtonHandlerMap,
-  ChatMessage,
-  ConnectionMessage,
-  CreateMessage,
   ElementType,
-  InputBoxTypes,
-  JoinMessage,
-  LeaveMessage,
-  RenameMessage,
-  RequstType,
-  RoomNotificationMessage,
+  InputBoxTypes
 } from "./types.client.js";
 
+import { CreateMessage,ChatMessage,ConnectionMessage,JoinMessage,LeaveMessage,RenameMessage,RoomNotificationMessage } from "@shared/message.type.js";
+import { RequestType } from "@shared/request.enum.js";
 const MESSAGE_BOX = document.getElementById("messageBox");
 const USERNAME_INPUT_DIV: HTMLInputElement = document.getElementById(
   "usernameInputDiv",
@@ -196,12 +191,12 @@ export function JoinRoombtnHandler() {
     return;
   }
   const sRoomId = +sanitizeNumber(roomId);
-  if (sRoomId <= 10000 || sRoomId >= 99999) {
+  if (sRoomId <= ROOM_ID_MIN|| sRoomId >= ROOO_ID_MAX) {
     alert("Room Id should be between 1 to 1000");
     return;
   }
-  const payload: JoinMessage = {
-    type: RequstType.JOIN,
+  const payload: Partial<JoinMessage> = {
+    type: RequestType.JOIN,
     roomId: sRoomId,
   };
   joinRoom(payload);
@@ -219,12 +214,12 @@ export function CreateRoombtnHandler() {
     return;
   }
   const sRoomName = sanitizeText(roomName);
-  if (sRoomName.length > 16) {
-    alert("Room name cannot be greater than 16");
+  if (sRoomName.length > MAX_ROOM_NAME_LENGTH) {
+    alert("Room name cannot be greater than "+MAX_ROOM_NAME_LENGTH);
     return;
   }
-  const payload: CreateMessage = {
-    type: RequstType.CREATE,
+  const payload: Partial<CreateMessage> = {
+    type: RequestType.CREATE,
     roomName: sRoomName,
   };
   createRoom(payload);
@@ -244,15 +239,15 @@ export function SendMessagebtnHandler() {
   }
   //message should not greter than 200Words
 
-  if (message.trim().length > 200) {
-    alert("Message could not be greter than 200 words");
+  if (message.trim().length > MAX_MESSAGE_LENGTH) {
+    alert(`Message could not be greter than ${MAX_MESSAGE_LENGTH} words`);
   }
 
   const randomMessageId = Math.round(Math.random() * 1000).toString();
   const sanitizedMessage = sanitizeText(message);
-  const payload: ChatMessage = {
+  const payload: Partial<ChatMessage> = {
     message: sanitizedMessage,
-    type: RequstType.MESSAGE,
+    type: RequestType.MESSAGE,
     id: randomMessageId,
   };
   //in case if no tracking required (bad practice ) then
@@ -269,10 +264,8 @@ export function SendMessagebtnHandler() {
 }
 
 export function RenamebtnHandler() {
-  console.log("Rename/Update Username button clicked");
 
   const btn = document.getElementById("updateUsernamebtn");
-  console.log(btn);
 
   if (btn && USERNAME_INPUT_DIV) {
     btn.classList.add("opacity-0", "invisible");
@@ -284,7 +277,6 @@ export function RenamebtnHandler() {
 
     USERNAME_INPUT_DIV.focus();
   }
-  console.log("Reached to end of fx");
 }
 
 export function LeaveRoombtnHandler() {
@@ -295,8 +287,8 @@ export function LeaveRoombtnHandler() {
   }
   const sRoomId = +sanitizeNumber(roomId + "");
 
-  const payload: LeaveMessage = {
-    type: RequstType.LEAVE,
+  const payload: Partial<LeaveMessage> = {
+    type: RequestType.LEAVE,
     roomId: sRoomId,
   };
   leaveRoom(payload);
@@ -327,7 +319,7 @@ export function initializeState() {
   runChangeDetectioninState();
 }
 incomingMessageEvent.addEventListener(
-  RequstType.CREATE,
+  RequestType.CREATE,
   withCustomDetail<CreateMessage>((message) => {
     appendInfoAlert(message.message ?? "");
     currentState.set("roomId", message.roomId ?? 0);
@@ -337,37 +329,37 @@ incomingMessageEvent.addEventListener(
 );
 
 incomingMessageEvent.addEventListener(
-  RequstType.NOTIFY,
+  RequestType.NOTIFY,
   withCustomDetail<RoomNotificationMessage>((message) => {
-    if (message.notificationOf == RequstType.JOIN) {
+    if (message.notificationOf == RequestType.JOIN) {
       currentState.set(
         "activeMember",
         +(currentState.get("activeMember") ?? 0) + 1,
       );
       runChangeDetectioninState();
-    } else if (message.notificationOf == RequstType.LEAVE) {
+    } else if (message.notificationOf == RequestType.LEAVE) {
       currentState.set(
         "activeMember",
         +(currentState.get("activeMember") ?? 0) - 1,
       );
       runChangeDetectioninState();
-    } else if (message.notificationOf == RequstType.MESSAGE) {
+    } else if (message.notificationOf == RequestType.MESSAGE) {
       //ack received for the message
       const messageId = message.additional?.messageId;
       if (messageId) {
-        if (messageId !== "0" && messageId !== "101010") {
+        if (messageId !== "0" && messageId !== CLIENT_BANNED_CODE) {
           const metadata = pendingMessages.get(messageId);
           if (metadata) {
             clearTimeout(metadata.timeout);
-            appendOwnMessageBubble(metadata.message.message);
+            appendOwnMessageBubble(metadata.message.message ?? 'No Message');
             pendingMessages.delete(messageId);
             return;
           }
           //this means the message id is received of a message which is been
           //retried multiple times and backoffed or duplicate ack recieved
-        } else if (messageId === "101010") {
+        } else if (messageId === CLIENT_BANNED_CODE) {
           console.log(
-            "Client removed from the server received 101010 cleaning pending list",
+            "Client removed from the server received cleaning pending list",
           );
           appendInfoAlert(message.message);
           clearPendingACKMessages();
@@ -383,7 +375,7 @@ incomingMessageEvent.addEventListener(
 );
 
 incomingMessageEvent.addEventListener(
-  RequstType.CONNECT,
+  RequestType.CONNECT,
   withCustomDetail<ConnectionMessage>((message) => {
     appendInfoAlert(message.message);
     currentState.set("username", message.username);
@@ -393,7 +385,7 @@ incomingMessageEvent.addEventListener(
 );
 
 incomingMessageEvent.addEventListener(
-  RequstType.JOIN,
+  RequestType.JOIN,
   withCustomDetail<JoinMessage>((message) => {
     appendInfoAlert(message.message ?? "");
     if (Number(message.roomId) !== 404) {
@@ -406,7 +398,7 @@ incomingMessageEvent.addEventListener(
 );
 
 incomingMessageEvent.addEventListener(
-  RequstType.RENAME,
+  RequestType.RENAME,
   withCustomDetail<RenameMessage>((message) => {
     appendInfoAlert(message.message ?? "");
     currentState.set("username", message.username);
@@ -415,7 +407,7 @@ incomingMessageEvent.addEventListener(
 );
 
 incomingMessageEvent.addEventListener(
-  RequstType.LEAVE,
+  RequestType.LEAVE,
   withCustomDetail<LeaveMessage>((message) => {
     appendInfoAlert(message.message ?? "");
     currentState.set("roomId", 0);
@@ -426,7 +418,7 @@ incomingMessageEvent.addEventListener(
 );
 
 incomingMessageEvent.addEventListener(
-  RequstType.MESSAGE,
+  RequestType.MESSAGE,
   withCustomDetail<ChatMessage>((message) => {
     appendRecievedMessageBubble(message.sender ?? "Anonymous", message.message);
   }),
@@ -467,11 +459,11 @@ USERNAME_INPUT_DIV.addEventListener("keydown", (e) => {
       console.log("No username");
     } else {
       const susername = sanitizeText(userName);
-      if (susername.length > 16) {
-        alert("New Username cannot be greater than 16");
+      if (susername.length > MAX_USERNAME_LENGTH) {
+        alert("New Username cannot be greater than "+MAX_USERNAME_LENGTH);
       } else {
-        const payload: RenameMessage = {
-          type: RequstType.RENAME,
+        const payload: Partial<RenameMessage> = {
+          type: RequestType.RENAME,
           username: susername,
         };
         renameUser(payload);

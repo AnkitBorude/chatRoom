@@ -85,8 +85,6 @@ export class RoomManager {
     //create Room and ad creator client in that room
     const client = await this.getClientBySocket(ws);
     if (!client) {
-      //send the error code back to ws
-      console.log("Client does not exists thus cannot create room");
       ws.send(this.roomUtility.createNotFoundMessage());
       return;
     }
@@ -121,8 +119,7 @@ export class RoomManager {
     const client = await this.getClientBySocket(ws);
 
     if (!client) {
-      //send the error code back to ws
-      console.log("Client does not exists thus cannot rename user");
+      ws.send(this.roomUtility.createNotFoundMessage());
       return;
     }
     const previousname = client.name;
@@ -139,19 +136,12 @@ export class RoomManager {
 
     const roomIdofClient = await this.isPartofAlocalRoom(client);
 
-    console.log(
-      "🚀 ~ RoomManager ~ renameUser ~ roomIdofClient:",
-      roomIdofClient,
-    );
-
     if (roomIdofClient) {
       const roomNotification =
         this.roomUtility.createClientNotificationofMessage(
           `User ${client.id} Changed his username from ${previousname} to ${message.username}`,
           RequestType.RENAME,
         );
-
-      console.log("THE ROOM NOTIFICATION " + JSON.stringify(roomNotification));
       this.broadcastLocalRoomNotification(
         roomIdofClient,
         client.id,
@@ -166,8 +156,6 @@ export class RoomManager {
 
   public async joinRoom(ws: WebSocket, secondArg: JoinMessage | number) {
     let roomIdToJoin: number;
-
-    console.log("Request for Joining room");
     if (typeof secondArg === "number") {
       roomIdToJoin = secondArg;
     } else {
@@ -178,8 +166,6 @@ export class RoomManager {
     if (!client) {
       //send the error code back to ws
       ws.send(this.roomUtility.createNotFoundMessage());
-      console.log("Client does not exists thus cannot Join room again ");
-
       return;
     }
     //check whether the passed roomId exists
@@ -199,7 +185,6 @@ export class RoomManager {
     }
 
     const roomId = await this.isPartofAlocalRoom(client);
-    console.log("Users previous room id" + roomId);
     if (roomId) {
       //is part of any room leave previous room
       await this.leaveRoom(ws);
@@ -262,8 +247,6 @@ export class RoomManager {
     } else {
       const rClient = await this.getClientBySocket(ws);
       if (!rClient) {
-        //send the error code back to ws
-        console.log("Client does not exists thus cannot leave Room");
         ws.send(this.roomUtility.createNotFoundMessage());
         return;
       }
@@ -271,36 +254,20 @@ export class RoomManager {
       currentRoomId = await this.isPartofAlocalRoom(client);
     }
 
-    console.log("🚀 ~ RoomManager ~ leaveRoom ~ currentRoomId:", currentRoomId);
-
     if (!currentRoomId) {
       //not part of any room so cannot leave invalid command
       return;
     }
     const roomMeta = await this.isRoomExists(currentRoomId);
-
-    console.log(
-      "🚀 ~ RoomManager ~ leaveRoom ~ roomMeta:",
-      JSON.stringify(roomMeta),
-    );
-
-    //remove from the local set and
     this.rooms.get(currentRoomId)?.delete(client.id);
     const globalRoomSpaceSize = (
       await this.redis.removeClientFromRoom(currentRoomId, client.id)
     ).slice(2);
 
-    console.log(
-      "🚀 ~ RoomManager ~ leaveRoom ~ globalRoomSpaceSize:",
-      globalRoomSpaceSize,
-    );
-
     //check if the size of local and global room
     //if empty directly delete the room and unsubcribe from the pipeline
 
     const sizeOfRoom = this.rooms.get(currentRoomId)?.size;
-
-    console.log("🚀 ~ RoomManager ~ leaveRoom ~ sizeOfRoom:", sizeOfRoom);
 
     if (!sizeOfRoom || sizeOfRoom <= 0) {
       //no one in local room
@@ -319,13 +286,6 @@ export class RoomManager {
 
     //the cardinality of set of users in the room is ultimate source of truth
     if (Number(globalRoomSpaceSize[1]) <= 0) {
-      //remove that room and delete the set
-      console.log(
-        "The Size of the global room is " +
-          globalRoomSpaceSize[1] +
-          "thus removing the empty room from global " +
-          currentRoomId,
-      );
       await this.redis.removeEmptyRoom(currentRoomId);
       deletedGlobalRoom = true;
     }
@@ -376,8 +336,6 @@ export class RoomManager {
   public async sendMessage(ws: WebSocket, messageObj: ChatMessage) {
     const client = await this.getClientBySocket(ws);
     if (!client) {
-      //send the error code back to ws
-      console.log("Client does not exists thus cannot send message");
       ws.send(this.roomUtility.createNotFoundMessage());
       return;
     }
@@ -437,12 +395,6 @@ export class RoomManager {
     //if the chatroom has zero clients then delete that room too
     //as we do not allow empty rooms by the way
     const client = await this.getClientBySocket(ws);
-
-    console.log(
-      "Removing disconnected client from the room " + JSON.stringify(client),
-    );
-
-    console.log("Socket from the wstoClient " + this.wsToClientId.get(ws));
     if (client) {
       const roomId = await this.isPartofAlocalRoom(client);
       if (roomId) {
@@ -477,7 +429,6 @@ export class RoomManager {
         for (const [key, set] of this.rooms) {
           if (set.has(clientId)) {
             //remove from the room also
-            console.log("User found in room removing it asap" + key);
             //creating a client clone
             const clientDummy: Client = {
               id: clientId,
@@ -584,9 +535,6 @@ export class RoomManager {
   }
 
   private async removeLocalRoom(roomId: number) {
-    console.log(
-      "Room at global scope does not exists thus removing local room and participants",
-    );
     const clientsInroom = this.rooms.get(roomId);
 
     const leftNotificationToUser =

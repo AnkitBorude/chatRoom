@@ -1,3 +1,4 @@
+import { MAX_REDIS_HEARTBEAT_INTERVAL_SEC, MAX_REDIS_HEARTBEAT_RETRY } from "@shared/const";
 import { createClient, RedisClientType } from "redis";
 
 export class RedisClientWrapper {
@@ -8,7 +9,7 @@ export class RedisClientWrapper {
 
   private pingInterval: NodeJS.Timeout | undefined = undefined;
   isRedisHealthy: boolean = false;
-  private RETRY: number = 5;
+  private RETRY: number = MAX_REDIS_HEARTBEAT_RETRY;
   private _name: string = "default";
 
   constructor(name?: string) {
@@ -47,7 +48,7 @@ export class RedisClientWrapper {
     try {
       await this.client?.connect();
       console.log("Redis Connected Successfully NAME: " + this._name);
-      this.startHeartbeat(5000);
+      this.startHeartbeat(MAX_REDIS_HEARTBEAT_INTERVAL_SEC*1000);
 
       return this.client;
     } catch (error) {

@@ -1,4 +1,5 @@
 import {
+  CLIENT_BANNED_CODE,
   CLIENT_ID_MAX,
   CLIENT_ID_MIN,
   ROOM_ID_MIN,
@@ -54,7 +55,7 @@ export class ChatRoomUtility {
     const message = this.createClientNotificationofMessage(
       "You have been removed from server by System/ Admin.Kindly rejoin",
       RequestType.MESSAGE,
-      { messageId: "101010" },
+      { messageId: CLIENT_BANNED_CODE },
     );
     return JSON.stringify(message);
   }

@@ -1,12 +1,5 @@
 import { appendInfoAlert } from "./dom.client.js";
-import {
-  BaseMessage,
-  CreateMessage,
-  JoinMessage,
-  LeaveMessage,
-  RenameMessage,
-  ChatMessage,
-} from "./types.client.js";
+import { CreateMessage,ChatMessage,JoinMessage,LeaveMessage,RenameMessage,BaseMessage} from "@shared/message.type.js";
 import { incomingMessageEvent } from "./state.js";
 
 let socket: WebSocket;
@@ -38,7 +31,7 @@ export function connectWebSocket(hostname: string): WebSocket {
   return socket;
 }
 
-export function createRoom(payload: CreateMessage) {
+export function createRoom(payload: Partial<CreateMessage>) {
   if (isSocketOpen()) {
     //Send message to server
     try {
@@ -53,7 +46,7 @@ export function createRoom(payload: CreateMessage) {
   appendInfoAlert("Problem during connection : SOCKET CLOSED");
 }
 
-export function renameUser(payload: RenameMessage) {
+export function renameUser(payload: Partial<RenameMessage>) {
   if (isSocketOpen()) {
     //Send message to server
     try {
@@ -67,7 +60,7 @@ export function renameUser(payload: RenameMessage) {
   appendInfoAlert("Problem during connection : SOCKET CLOSED");
 }
 
-export function joinRoom(payload: JoinMessage) {
+export function joinRoom(payload: Partial<JoinMessage>) {
   if (isSocketOpen()) {
     //Send message to server
     try {
@@ -81,7 +74,7 @@ export function joinRoom(payload: JoinMessage) {
   appendInfoAlert("Problem during connection : SOCKET CLOSED");
 }
 
-export function leaveRoom(payload: LeaveMessage) {
+export function leaveRoom(payload: Partial<LeaveMessage>) {
   if (isSocketOpen()) {
     //Send message to server
     try {
@@ -95,7 +88,7 @@ export function leaveRoom(payload: LeaveMessage) {
   appendInfoAlert("Problem during connection : SOCKET CLOSED");
 }
 
-export function sendMessage(payload: ChatMessage) {
+export function sendMessage(payload: Partial<ChatMessage>) {
   if (isSocketOpen()) {
     //Send message to server
     try {

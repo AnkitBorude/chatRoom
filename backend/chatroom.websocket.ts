@@ -14,12 +14,12 @@ import {
 import { RequestType } from "@shared/request.enum";
 import { RedisHelper } from "./redis/redis.helper";
 import { ServerInfo } from "./types";
+import { SERVER_STAT_UPDATE_INTERVAL_SEC } from "@shared/const";
 export class ChatRoomWebsocket {
   private websocketServer: WebSocket.Server;
   private roomManager: RoomManager;
   private connectionLifeMap: Map<WebSocket, boolean>;
   private readonly PING_INTERVAL_SEC: number = 30;
-  private readonly SERVER_UPDATE_INTERVAL: number = 30;
   private redisHelper: RedisHelper;
   private serverId: string = crypto.randomUUID();
   constructor(
@@ -104,7 +104,7 @@ export class ChatRoomWebsocket {
       } finally {
         console.log("Update Sent to server");
       }
-    }, this.SERVER_UPDATE_INTERVAL * 1000);
+    }, SERVER_STAT_UPDATE_INTERVAL_SEC * 1000);
 
     this.websocketServer.on("close", async () => {
       clearInterval(pingInterval);

@@ -1,13 +1,12 @@
 import { Client, Room, ServerInfo, ServerStatsInfo } from "backend/types";
 import { RedisClientType } from "redis";
 import { RedisUtil } from "./redis.util";
+import { CLIENT_REDIS_TTL_SEC, ROOM_REDIS_TTL_SEC, SERVER_STAT_REDIS_TTL_SEC } from "@shared/const";
 
 export class RedisHelper {
   redisClient: RedisClientType;
   redisPublisher: RedisClientType;
   redisUtil: RedisUtil;
-  private readonly KEY_TTL_SEC = 300;
-  private readonly SERVER_TTL_SEC = 3600;
   constructor(redisClient: RedisClientType, redisPublisher: RedisClientType) {
     this.redisClient = redisClient;
     this.redisPublisher = redisPublisher;
@@ -20,7 +19,7 @@ export class RedisHelper {
     await this.redisClient
       .multi()
       .hSet(key, stringiFied_client)
-      .expire(key, this.KEY_TTL_SEC)
+      .expire(key, CLIENT_REDIS_TTL_SEC)
       .exec();
   }
 
@@ -52,7 +51,7 @@ export class RedisHelper {
     await this.redisClient
       .multi()
       .hSet(key, stringiFied_room)
-      .expire(key, this.KEY_TTL_SEC)
+      .expire(key, ROOM_REDIS_TTL_SEC)
       .exec();
   }
 
@@ -81,7 +80,7 @@ export class RedisHelper {
       .hSet(clientKey, "roomId", roomId)
       .hIncrBy(roomKey, "activeUsers", 1)
       .sCard(chatRoomkey)
-      .expire(chatRoomkey, this.KEY_TTL_SEC, "NX")
+      .expire(chatRoomkey,ROOM_REDIS_TTL_SEC, "NX")
       .exec();
   }
 
@@ -154,7 +153,7 @@ export class RedisHelper {
     await this.redisClient
       .multi()
       .hSet(key, stringiFied_server)
-      .expire(key, this.SERVER_TTL_SEC)
+      .expire(key, SERVER_STAT_REDIS_TTL_SEC)
       .exec();
   }
 
