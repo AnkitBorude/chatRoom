@@ -15,6 +15,7 @@ import { RequestType } from "@shared/request.enum";
 import { RedisHelper } from "./redis/redis.helper";
 import { ServerInfo } from "./types";
 import { SERVER_STAT_UPDATE_INTERVAL_SEC } from "@shared/const";
+import { AdminController } from "./admin/admin.controller";
 export class ChatRoomWebsocket {
   private websocketServer: WebSocket.Server;
   private roomManager: RoomManager;
@@ -22,6 +23,7 @@ export class ChatRoomWebsocket {
   private readonly PING_INTERVAL_SEC: number = 30;
   private redisHelper: RedisHelper;
   private serverId: string = crypto.randomUUID();
+  private adminController:AdminController | undefined;
   constructor(
     server: http.Server,
     client: RedisClientType,
@@ -32,6 +34,7 @@ export class ChatRoomWebsocket {
     //generate New ServerId
     this.roomManager = new RoomManager(this.redisHelper, this.serverId);
     this.connectionLifeMap = new Map();
+    this.adminController=AdminController.getInstance(server);
   }
   public async initialize() {
     const info: ServerInfo = {
@@ -111,6 +114,11 @@ export class ChatRoomWebsocket {
       clearInterval(serverUpdateInterval);
       await this.redisHelper.removeServerId(this.serverId);
     });
+
+    if(this.adminController){
+      console.log("Container has admin endpoints accessible..");
+      this.adminController.startListening(this.serverId);
+    }
   }
 
   private incomingMessageHandlers(message: string, websocket: WebSocket) {
