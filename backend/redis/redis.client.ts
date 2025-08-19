@@ -30,10 +30,7 @@ export class RedisClientWrapper {
           process.exit(-1);
         }
         console.log(
-          "🔄 Redis is reconnecting... ATTEMPT LEFT: " +
-            this.RETRY +
-            " NAME :" +
-            this._name,
+          "🔄 Redis is reconnecting..."
         );
         this.RETRY--;
       });
@@ -47,7 +44,6 @@ export class RedisClientWrapper {
     }
     try {
       await this.client?.connect();
-      console.log("Redis Connected Successfully NAME: " + this._name);
       this.startHeartbeat(MAX_REDIS_HEARTBEAT_INTERVAL_SEC*1000);
 
       return this.client;

@@ -37,3 +37,10 @@ export type ServerStatsInfo = Pick<
   | "totalRooms"
   | "totalMessagesSent"
 >;
+
+export enum TOKENTYPE {
+  ADMIN_USER='ADMIN_USER',
+  ADMIN_PASS='ADMIN_PASS',
+  JWT_SECRET='JWT_SECRET'
+}
+
