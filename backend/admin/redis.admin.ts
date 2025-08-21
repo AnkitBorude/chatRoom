@@ -56,4 +56,15 @@ export class RedisAdminHelper {
     }
     return idsNum;
   }
+
+  public async getGlobalRateLimit(ip: string) {
+    const key = `ratelimit:${ip}`;
+    const count = await this.redisClient.multi().incr(key).ttl(key).exec();
+    if (Number(count[0]) === 1) {
+      //setting global key expiry to 60 seconds
+      await this.redisClient.expire(key, 60);
+    }
+
+    return count;
+  }
 }

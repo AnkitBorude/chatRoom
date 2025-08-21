@@ -11,7 +11,8 @@ export class JWTTokenManager {
     try {
       jwt.verify(token, this.env.JWT_SECRET);
       return true;
-    } catch {
+    } catch (error) {
+      console.log(error);
       return false;
     }
   }

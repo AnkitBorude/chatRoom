@@ -4,6 +4,7 @@ import { TOKENTYPE } from "backend/types";
 import { AdminHelperUtility } from "./admin.util";
 import { RedisAdminHelper } from "./redis.admin";
 import { RedisClientType } from "redis";
+import { MAX_REQUEST_WITHIN_1_MIN } from "@shared/const";
 
 export class AdminController {
   private serverId: string = "";
@@ -13,6 +14,9 @@ export class AdminController {
     "JWT_SECRET",
   ];
   private static environment: Record<TOKENTYPE, string>;
+  private readonly RATE_LIMIT_MAX_CONCURRENT_TOKENS = 2;
+  private readonly TOKEN_REFILLING_INTERVAL_SEC = 5;
+  private rateLimitToken: number = this.RATE_LIMIT_MAX_CONCURRENT_TOKENS;
 
   private tokenManager: JWTTokenManager;
   private adminHelper: AdminHelperUtility;
@@ -24,6 +28,11 @@ export class AdminController {
     this.tokenManager = new JWTTokenManager(AdminController.environment);
     this.adminHelper = new AdminHelperUtility();
     this.redis = new RedisAdminHelper(redisClient);
+    setInterval(() => {
+      if (this.rateLimitToken < this.RATE_LIMIT_MAX_CONCURRENT_TOKENS) {
+        this.rateLimitToken++;
+      }
+    }, this.TOKEN_REFILLING_INTERVAL_SEC * 1000);
   }
   static getInstance(
     server: http.Server,
@@ -47,12 +56,14 @@ export class AdminController {
 
   public startListening(serverId: string) {
     this.serverId = serverId;
-    this.server.on("request", (req, res) => {
+    this.server.on("request", async (req, res) => {
+
+      if (!(await this.checkRate(req, res))) return;
       if (req.url === "/admin/login" && req.method === "POST") {
         return this.loginAdmin(req, res);
       }
 
-      //   if (!(await this.checkAuthAndRate(req, res))) return;
+      if (!(await this.checkAuth(req, res))) return;
 
       if (req.url === "/admin/servers" && req.method === "GET") {
         return this.getAllServerInfo(res);
@@ -166,5 +177,47 @@ export class AdminController {
   private async getAllRooms(res: http.ServerResponse) {
     const data = await this.redis.getAllRoomIds();
     res.writeHead(200).end(JSON.stringify({ room_ids: data }));
+  }
+
+  private async checkAuth(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): Promise<boolean> {
+    // JWT
+    if (!this.tokenManager.isAuthenticated(req)) {
+      res.writeHead(401).end("unauthorized access token required");
+      return false;
+    } 
+    return true;
+  }
+
+  private async checkRate( req: http.IncomingMessage,
+    res: http.ServerResponse):Promise<boolean>
+  {
+     let ip = req.headers["x-real-ip"];
+    if (ip) {
+      //accept first duplicate header value only
+      ip = ip[0];
+    } else {
+      ip = req.socket.remoteAddress || "unknown";
+    }
+    //global rate limit
+    const globalCount = await this.redis.getGlobalRateLimit(ip);
+    if (Number(globalCount[0]) > Number(MAX_REQUEST_WITHIN_1_MIN)) {
+      res
+        .writeHead(429, {
+          "retry-after": globalCount[1].toString(),
+        })
+        .end("rate limit exceeded");
+      return false;
+    }
+    //local rate limit
+    if (this.rateLimitToken <= 0) {
+      res.writeHead(429).end("pod rate limit exceeded");
+      console.warn('Rate limit violation by'+ip);
+      return false;
+    }
+    this.rateLimitToken--;
+    return true;
   }
 }
