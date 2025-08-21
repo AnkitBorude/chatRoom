@@ -5,7 +5,10 @@ import { AdminHelperUtility } from "./admin.util";
 import { RedisAdminHelper } from "./redis.admin";
 import { RedisClientType } from "redis";
 import { MAX_REQUEST_WITHIN_1_MIN } from "@shared/const";
-
+import * as dotenv from 'dotenv';
+import path from "path";
+//local only
+dotenv.config({path: path.resolve(__dirname, '../../.env')});
 export class AdminController {
   private serverId: string = "";
   private static REQUIRED_ENV_VARIABLES = [
@@ -13,7 +16,11 @@ export class AdminController {
     "ADMIN_PASS",
     "JWT_SECRET",
   ];
-  private static environment: Record<TOKENTYPE, string>;
+  private static environment: Record<TOKENTYPE, string> ={
+   'ADMIN_PASS':'abc',
+   'ADMIN_USER':'user',
+   'JWT_SECRET':'secret' 
+  };
   private readonly RATE_LIMIT_MAX_CONCURRENT_TOKENS = 2;
   private readonly TOKEN_REFILLING_INTERVAL_SEC = 5;
   private rateLimitToken: number = this.RATE_LIMIT_MAX_CONCURRENT_TOKENS;
@@ -38,7 +45,9 @@ export class AdminController {
     server: http.Server,
     redisClient: RedisClientType,
   ): AdminController | undefined {
-    Object.keys(TOKENTYPE).forEach((variable) => {
+
+    for (const variable of Object.keys(TOKENTYPE))
+    {
       if (!process.env[variable]) {
         console.log(
           "enviroment variable " +
@@ -48,9 +57,8 @@ export class AdminController {
         return undefined;
       }
       this.environment[variable as TOKENTYPE] = process.env[variable];
-    });
+    }
     Object.freeze(this.environment);
-
     return new AdminController(server, redisClient);
   }
 
@@ -102,7 +110,9 @@ export class AdminController {
       }
 
       // if any request other than this just ignore
+      res.writeHead(404).end('Route not found kindly look documentation');
       return;
+        
     });
   }
 
@@ -114,6 +124,7 @@ export class AdminController {
     try {
       body = await this.adminHelper.getBody(req);
     } catch (err) {
+      console.log(err);
       if (String(err) === "413") {
         // payload was too large or invalid JSON
         res.writeHead(413).end("payload was too large ");
@@ -194,6 +205,7 @@ export class AdminController {
   private async checkRate( req: http.IncomingMessage,
     res: http.ServerResponse):Promise<boolean>
   {
+    console.log("Rate limiting");
      let ip = req.headers["x-real-ip"];
     if (ip) {
       //accept first duplicate header value only
@@ -202,7 +214,11 @@ export class AdminController {
       ip = req.socket.remoteAddress || "unknown";
     }
     //global rate limit
+    console.log("User Ip is "+ip);
     const globalCount = await this.redis.getGlobalRateLimit(ip);
+
+    console.log(globalCount.map(x=>Number(x)));
+
     if (Number(globalCount[0]) > Number(MAX_REQUEST_WITHIN_1_MIN)) {
       res
         .writeHead(429, {

@@ -116,8 +116,17 @@ export class ChatRoomWebsocket {
     });
 
     if (this.adminController) {
+      console.log("Type of"+typeof this.adminController);
       console.log("Container has admin endpoints accessible..");
+
+      try
+      {
       this.adminController.startListening(this.serverId);
+      } 
+      catch(error)
+      {
+        console.log(error);
+      }
     }
   }
 
