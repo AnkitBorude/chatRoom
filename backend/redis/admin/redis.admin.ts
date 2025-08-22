@@ -1,5 +1,5 @@
 import { RedisClientType } from "redis";
-import { RedisUtil } from "../redis/redis.util";
+import { RedisUtil } from "../redis.util";
 
 export class RedisAdminHelper {
   private redisClient: RedisClientType;

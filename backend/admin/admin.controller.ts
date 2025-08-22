@@ -2,7 +2,7 @@ import http from "http";
 import { JWTTokenManager } from "./jwt.util";
 import { TOKENTYPE } from "backend/types";
 import { AdminHelperUtility } from "./admin.util";
-import { RedisAdminHelper } from "./redis.admin";
+import { RedisAdminHelper } from "backend/redis/admin/redis.admin";
 import { RedisClientType } from "redis";
 import { MAX_REQUEST_WITHIN_1_MIN } from "@shared/const";
 import * as dotenv from "dotenv";
