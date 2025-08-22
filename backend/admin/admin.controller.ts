@@ -5,10 +5,10 @@ import { AdminHelperUtility } from "./admin.util";
 import { RedisAdminHelper } from "./redis.admin";
 import { RedisClientType } from "redis";
 import { MAX_REQUEST_WITHIN_1_MIN } from "@shared/const";
-import * as dotenv from 'dotenv';
+import * as dotenv from "dotenv";
 import path from "path";
 //local only
-dotenv.config({path: path.resolve(__dirname, '../../.env')});
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 export class AdminController {
   private serverId: string = "";
   private static REQUIRED_ENV_VARIABLES = [
@@ -16,10 +16,10 @@ export class AdminController {
     "ADMIN_PASS",
     "JWT_SECRET",
   ];
-  private static environment: Record<TOKENTYPE, string> ={
-   'ADMIN_PASS':'abc',
-   'ADMIN_USER':'user',
-   'JWT_SECRET':'secret' 
+  private static environment: Record<TOKENTYPE, string> = {
+    ADMIN_PASS: "abc",
+    ADMIN_USER: "user",
+    JWT_SECRET: "secret",
   };
   private readonly RATE_LIMIT_MAX_CONCURRENT_TOKENS = 2;
   private readonly TOKEN_REFILLING_INTERVAL_SEC = 5;
@@ -45,9 +45,7 @@ export class AdminController {
     server: http.Server,
     redisClient: RedisClientType,
   ): AdminController | undefined {
-
-    for (const variable of Object.keys(TOKENTYPE))
-    {
+    for (const variable of Object.keys(TOKENTYPE)) {
       if (!process.env[variable]) {
         console.log(
           "enviroment variable " +
@@ -65,7 +63,6 @@ export class AdminController {
   public startListening(serverId: string) {
     this.serverId = serverId;
     this.server.on("request", async (req, res) => {
-
       if (!(await this.checkRate(req, res))) return;
       if (req.url === "/admin/login" && req.method === "POST") {
         return this.loginAdmin(req, res);
@@ -110,9 +107,8 @@ export class AdminController {
       }
 
       // if any request other than this just ignore
-      res.writeHead(404).end('Route not found kindly look documentation');
+      res.writeHead(404).end("Route not found kindly look documentation");
       return;
-        
     });
   }
 
@@ -198,15 +194,16 @@ export class AdminController {
     if (!this.tokenManager.isAuthenticated(req)) {
       res.writeHead(401).end("unauthorized access token required");
       return false;
-    } 
+    }
     return true;
   }
 
-  private async checkRate( req: http.IncomingMessage,
-    res: http.ServerResponse):Promise<boolean>
-  {
+  private async checkRate(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): Promise<boolean> {
     console.log("Rate limiting");
-     let ip = req.headers["x-real-ip"];
+    let ip = req.headers["x-real-ip"];
     if (ip) {
       //accept first duplicate header value only
       ip = ip[0];
@@ -214,10 +211,10 @@ export class AdminController {
       ip = req.socket.remoteAddress || "unknown";
     }
     //global rate limit
-    console.log("User Ip is "+ip);
+    console.log("User Ip is " + ip);
     const globalCount = await this.redis.getGlobalRateLimit(ip);
 
-    console.log(globalCount.map(x=>Number(x)));
+    console.log(globalCount.map((x) => Number(x)));
 
     if (Number(globalCount[0]) > Number(MAX_REQUEST_WITHIN_1_MIN)) {
       res
@@ -230,7 +227,7 @@ export class AdminController {
     //local rate limit
     if (this.rateLimitToken <= 0) {
       res.writeHead(429).end("pod rate limit exceeded");
-      console.warn('Rate limit violation by'+ip);
+      console.warn("Rate limit violation by" + ip);
       return false;
     }
     this.rateLimitToken--;

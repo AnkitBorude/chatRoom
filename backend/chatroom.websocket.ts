@@ -24,6 +24,7 @@ export class ChatRoomWebsocket {
   private redisHelper: RedisHelper;
   private serverId: string = crypto.randomUUID();
   private adminController: AdminController | undefined;
+  private adminAccess: boolean = false;
   constructor(
     server: http.Server,
     client: RedisClientType,
@@ -116,15 +117,13 @@ export class ChatRoomWebsocket {
     });
 
     if (this.adminController) {
-      console.log("Type of"+typeof this.adminController);
+      console.log("Type of" + typeof this.adminController);
       console.log("Container has admin endpoints accessible..");
 
-      try
-      {
-      this.adminController.startListening(this.serverId);
-      } 
-      catch(error)
-      {
+      try {
+        this.adminController.startListening(this.serverId);
+        this.adminAccess = true;
+      } catch (error) {
         console.log(error);
       }
     }
@@ -168,5 +167,9 @@ export class ChatRoomWebsocket {
         );
         console.log("Invalid Message type");
     }
+  }
+
+  get hasAdminAccess(): boolean {
+    return this.adminAccess;
   }
 }
