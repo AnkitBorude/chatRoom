@@ -2,16 +2,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install TypeScript globally for compilation
-
 # Copy root-level package.json + package-lock.json
 COPY package*.json ./
 
-# Install only prod dependencies (we don’t need dev deps in prod image)
+# Install all deps (prod + dev, since we need tsc in build stage)
 RUN npm ci --include=dev
 
-# Copy backend + shared + tsconfig
-COPY tsconfig.json ./         
+# Copy tsconfig + backend + shared
+COPY tsconfig.json ./
 COPY shared ./shared
 COPY backend ./backend
 
@@ -22,12 +20,13 @@ RUN npx tsc -p backend/tsconfig.json
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
-# Copy only prod deps from builder
-COPY --from=builder /app/node_modules ./node_modules
+# Copy only prod deps
+COPY package*.json ./
+RUN npm install --omit=dev
 
-# Copy compiled backend dist
-COPY --from=builder /app/backend/dist ./backend/dist
+# Copy compiled dist + shared
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 
 # Start the backend
-CMD ["node", "backend/dist/index.js"]
+CMD ["node", "-r", "tsconfig-paths/register", "dist/backend/index.js"]

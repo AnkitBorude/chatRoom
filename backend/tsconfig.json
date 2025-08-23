@@ -1,10 +1,16 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "../",
-    "module": "commonjs"
+    "outDir": "../dist",         // compile to /app/backend/../dist → /app/dist
+    "rootDir": "../",            // source root starts from project root (../)
+    "module": "commonjs",
+    "baseUrl": "../",            // important for path mapping
+    "paths": {
+      "@shared/*": ["shared/*"]  // alias for shared folder
+    }
   },
-  "include": ["../backend/**/*.ts",
- "../shared/**/*.ts"]
+  "include": [
+    "../backend/**/*.ts",
+    "../shared/**/*.ts"
+  ]
 }
