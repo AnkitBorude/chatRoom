@@ -23,6 +23,7 @@
     "globals": "^16.3.0",
     "prettier": "3.6.2",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.0"
   },
@@ -30,7 +31,6 @@
     "dotenv": "^17.2.1",
     "jsonwebtoken": "^9.0.2",
     "redis": "^5.8.0",
-    "ws": "^8.18.3",
-    "tsconfig-paths": "^4.2.0"
+    "ws": "^8.18.3"
   }
 }
