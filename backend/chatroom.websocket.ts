@@ -111,6 +111,7 @@ export class ChatRoomWebsocket {
     }, SERVER_STAT_UPDATE_INTERVAL_SEC * 1000);
 
     this.websocketServer.on("close", async () => {
+      console.log("Closing websocket server");
       clearInterval(pingInterval);
       clearInterval(serverUpdateInterval);
       await this.redisHelper.removeServerId(this.serverId);
@@ -171,5 +172,21 @@ export class ChatRoomWebsocket {
 
   get hasAdminAccess(): boolean {
     return this.adminAccess;
+  }
+
+  public async closeSocket() {
+    const message = JSON.stringify({
+      type: "error",
+      message: "Server Disconnected retry after some time",
+    });
+    this.connectionLifeMap.forEach((value, ws) => {
+      if (value) {
+        ws.send(message);
+        //closing websocket thus the server will do other side-effects of removing
+        //clients from the server and rooms;
+        ws.close();
+      }
+    });
+    this.websocketServer.close();
   }
 }

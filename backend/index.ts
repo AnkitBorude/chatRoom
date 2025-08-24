@@ -76,3 +76,38 @@ async function connectRedisClients(): Promise<{
   console.log("Cannot connect to redis error");
   process.exit(0);
 }
+
+async function gracefulShutdown(signal: string) {
+  console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
+
+  // Stop accepting new requests
+  if (server) {
+    server.close(async () => {
+      console.log("HTTP server closed");
+
+      try {
+        // Close all active connections
+        await chatRoomInstance.closeSocket();
+        // Close Redis connection
+
+        await redisCommandClient.closeClient();
+        await redisSubscriber.closeClient();
+        console.log("Graceful shutdown completed");
+        process.exit(0);
+      } catch (error) {
+        console.error("Error during shutdown:", error);
+        process.exit(1);
+      }
+    });
+
+    // Force shutdown after timeout
+    setTimeout(() => {
+      console.error("Force shutdown after timeout");
+      process.exit(1);
+    }, 30000); // 30 seconds timeout
+  }
+}
+
+// Handle shutdown signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

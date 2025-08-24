@@ -20,7 +20,11 @@ export class RedisClientWrapper {
       this._name = name;
     }
     if (!this.client) {
-      this.client = createClient({});
+      this.client = createClient({
+        socket: {
+          host: "host.docker.internal",
+        },
+      });
       this.client.on("error", this.handleError);
       this.client.on("connect", () => {
         console.log("📡 Redis socket connected. NAME: " + this._name);
@@ -82,6 +86,13 @@ export class RedisClientWrapper {
       clearInterval(this.pingInterval);
       console.error("Reconnecting once");
       await this.connect();
+    }
+  }
+
+  public async closeClient() {
+    if (this.client.isOpen) {
+      await this.client.quit();
+      console.log("Redis connection closed");
     }
   }
 }
