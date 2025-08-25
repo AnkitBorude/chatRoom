@@ -5,18 +5,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+COPY frontend/public/src ./src
+
 # Copy root-level tsconfig for path alias resolution
 COPY tsconfig.json ./
 
 # Copy frontend sources
-COPY frontend/public/src ./src
+
 
 # Copy shared code (for @shared/* imports)
 COPY shared ./shared
 
 # Bundle the entry file
 # (Adjust entry file name if required)
-RUN npx esbuild src/app.ts --bundle --outfile=app.js --minify
+RUN npx esbuild src/app.ts --bundle --outfile=app.js --minify --platform=browser
 
 
 # ------------------------------------------------
@@ -24,8 +26,11 @@ RUN npx esbuild src/app.ts --bundle --outfile=app.js --minify
 # ------------------------------------------------
 FROM nginx:alpine
 
+COPY --from=builder /app/app.js /usr/share/nginx/html/app.js
+
 # Custom nginx config (contains SPA history fallback)
 COPY frontend/nginx.conf /etc/nginx/nginx.conf
+
 
 # Static files
 COPY frontend/public/index.html /usr/share/nginx/html/
@@ -33,7 +38,7 @@ COPY frontend/public/assets  /usr/share/nginx/html/assets/
 COPY frontend/public/style /usr/share/nginx/html/style/
 
 # Bundle from the build stage
-COPY --from=builder /app/app.js /usr/share/nginx/html/app.js
+
 
 EXPOSE 80
 

@@ -1,0 +1,86 @@
+
+services:
+  # ------------------ Redis ------------------
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    networks:
+      - chatnet
+
+  # ------------------ Backend replicas ------------------
+  backend1:
+    build:
+      context: .                 # root context, so shared/ is visible
+      dockerfile: backend/Dockerfile
+    image: chatrooms-backend:v1.1
+    environment:
+      ADMIN_USER: "admin"
+      ADMIN_PASS: "ankit"
+      JWT_SECRET: "abvdefj"
+    depends_on:
+      - redis
+    networks:
+      - chatnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend2:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: chatrooms-backend:v1.1
+    environment:
+      ADMIN_USER: "admin"
+      ADMIN_PASS: "ankit"
+      JWT_SECRET: "abvdefj"
+    depends_on:
+      - redis
+    networks:
+      - chatnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend3:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: chatrooms-backend:v1.1
+    environment:
+      ADMIN_USER: "admin"
+      ADMIN_PASS: "ankit"
+      JWT_SECRET: "abvdefj"
+    depends_on:
+      - redis
+    networks:
+      - chatnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ------------------ Nginx frontend ------------------
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend1
+      - backend2
+      - backend3
+    networks:
+      - chatnet
+
+# ------------------ Shared Network ------------------
+networks:
+  chatnet:
+    driver: bridge

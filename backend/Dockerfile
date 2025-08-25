@@ -14,7 +14,7 @@ COPY shared ./shared
 COPY backend ./backend
 
 # Compile backend TS -> JS
-RUN npx tsc -p backend/tsconfig.json
+RUN npx tsc -p backend/tsconfig.json && npx tsc-alias -p backend/tsconfig.json
 
 # ---------- Runtime Stage ----------
 FROM node:20-alpine AS runtime
@@ -28,5 +28,6 @@ RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 
+EXPOSE 3000
 # Start the backend
-CMD ["node", "-r", "tsconfig-paths/register", "dist/backend/index.js"]
+CMD ["node", "dist/backend/index.js"]

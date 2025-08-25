@@ -1,0 +1,42 @@
+# ---------- Builder Stage ----------
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy root-level package.json + package-lock.json
+COPY package*.json ./
+
+# Install all deps (prod + dev, since we need tsc + esbuild in build stage)
+RUN npm ci --include=dev
+
+# Copy tsconfig + backend + shared
+COPY tsconfig.json ./
+COPY shared ./shared
+COPY backend ./backend
+
+# ---------------- Type Checking ----------------
+# Run tsc in type-checking mode (no JS emit, only verify)
+RUN npx tsc -p backend/tsconfig.json --noEmit
+
+# ---------------- Build with esbuild ----------------
+# Use esbuild to bundle backend into a single file
+# Assumes your backend entrypoint is backend/index.ts
+RUN npx esbuild backend/index.ts \
+    --bundle \
+    --platform=node \
+    --target=node20 \
+    --outfile=dist/index.js \
+    --minify 
+# ---------- Runtime Stage ----------
+FROM node:20-alpine AS runtime
+WORKDIR /app
+
+# Copy only prod deps
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# Copy bundled dist
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 3000
+# Start the backend (now single bundled file)
+CMD ["node", "dist/index.js"]
