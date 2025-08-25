@@ -6,6 +6,8 @@ import {
 import { connectWebSocket } from "./socket.client.js";
 
 const hostname = window.location.host;
+
+console.log("hostname");
 //initialize state
 initializeState();
 
@@ -15,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bindInputBoxes();
 });
 
-const websocketHost = hostname.split(":")[0] + ":3000";
+const websocketHost = hostname+"/ws";
 //connect with websocket
+
+console.log(websocketHost);
 connectWebSocket(websocketHost);

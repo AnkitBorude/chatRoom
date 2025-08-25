@@ -22,7 +22,7 @@ export class RedisClientWrapper {
     if (!this.client) {
       this.client = createClient({
         socket: {
-          host: "host.docker.internal",
+          host: "redis",
         },
       });
       this.client.on("error", this.handleError);

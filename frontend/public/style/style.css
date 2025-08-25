@@ -1045,3 +1045,7 @@
   syntax: "*";
   inherits: false;
 }
+
+body{
+  background-image: url("assets/backgroundpic.jpg");
+}

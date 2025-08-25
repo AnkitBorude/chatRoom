@@ -28,5 +28,6 @@ RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 
+EXPOSE 3000
 # Start the backend
 CMD ["node", "dist/backend/index.js"]
