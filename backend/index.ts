@@ -27,8 +27,8 @@ function requestHandler(
     };
 
     try {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(healthcheck));
+      console.log("Health Check");
+      res.writeHead(200,{ "Content-Type": "application/json" }).end(JSON.stringify(healthcheck));
     } catch (error) {
       res.statusCode = 503;
       res.end(

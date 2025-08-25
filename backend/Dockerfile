@@ -20,6 +20,8 @@ RUN npx tsc -p backend/tsconfig.json && npx tsc-alias -p backend/tsconfig.json
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
+RUN apk add --update curl && rm -rf /var/cache/apk/*
+
 # Copy only prod deps
 COPY package*.json ./
 RUN npm install --omit=dev

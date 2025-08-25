@@ -63,6 +63,7 @@ export class AdminController {
   public startListening(serverId: string) {
     this.serverId = serverId;
     this.server.on("request", async (req, res) => {
+      if (req.url?.startsWith("/admin")) {
       if (!(await this.checkRate(req, res))) return;
       if (req.url === "/admin/login" && req.method === "POST") {
         return this.loginAdmin(req, res);
@@ -107,9 +108,11 @@ export class AdminController {
       }
 
       // if any request other than this just ignore
-      res.writeHead(404).end("Route not found kindly look documentation");
+      res.writeHead(404).end("given "+req.url+" not found kindly check documentation");
       return;
+      }
     });
+    
   }
 
   private async loginAdmin(
