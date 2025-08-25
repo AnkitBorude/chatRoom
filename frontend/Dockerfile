@@ -18,7 +18,7 @@ COPY shared ./shared
 
 # Bundle the entry file
 # (Adjust entry file name if required)
-RUN npx esbuild src/app.ts --bundle --outfile=app.js --minify
+RUN npx esbuild src/app.ts --bundle --outfile=app.js --minify --platform=browser
 
 
 # ------------------------------------------------
