@@ -16,7 +16,6 @@ function requestHandler(
   req: http.IncomingMessage,
   res: http.ServerResponse<http.IncomingMessage>,
 ) {
-
   console.log(formatMorganStyleLog(req));
   // Health check
   if (req.method === "GET" && req.url === "/health") {
@@ -28,7 +27,9 @@ function requestHandler(
 
     try {
       console.log("Health Check");
-      res.writeHead(200,{ "Content-Type": "application/json" }).end(JSON.stringify(healthcheck));
+      res
+        .writeHead(200, { "Content-Type": "application/json" })
+        .end(JSON.stringify(healthcheck));
     } catch (error) {
       res.statusCode = 503;
       res.end(
@@ -114,14 +115,13 @@ async function gracefulShutdown(signal: string) {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-
 function formatMorganStyleLog(req: http.IncomingMessage): string {
-    const method = req.method || 'UNKNOWN';
-    const url = req.url || '/';
-    const remoteAddress = req.socket.remoteAddress || 'UNKNOWN';
-    const userAgent = req.headers['user-agent'] || '-';
+  const method = req.method || "UNKNOWN";
+  const url = req.url || "/";
+  const remoteAddress = req.socket.remoteAddress || "UNKNOWN";
+  const userAgent = req.headers["user-agent"] || "-";
 
-    // Example format: ":remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent""
-    // Simplified for this example
-    return `${remoteAddress} - - [${new Date().toUTCString()}] "${method} ${url} HTTP/${req.httpVersion}"-" "${userAgent}"`;
+  // Example format: ":remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent""
+  // Simplified for this example
+  return `${remoteAddress} - - [${new Date().toUTCString()}] "${method} ${url} HTTP/${req.httpVersion}"-" "${userAgent}"`;
 }

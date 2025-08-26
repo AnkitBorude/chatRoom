@@ -64,55 +64,56 @@ export class AdminController {
     this.serverId = serverId;
     this.server.on("request", async (req, res) => {
       if (req.url?.startsWith("/admin")) {
-      if (!(await this.checkRate(req, res))) return;
-      if (req.url === "/admin/login" && req.method === "POST") {
-        return this.loginAdmin(req, res);
-      }
+        if (!(await this.checkRate(req, res))) return;
+        if (req.url === "/admin/login" && req.method === "POST") {
+          return this.loginAdmin(req, res);
+        }
 
-      if (!(await this.checkAuth(req, res))) return;
+        if (!(await this.checkAuth(req, res))) return;
 
-      if (req.url === "/admin/servers" && req.method === "GET") {
-        return this.getAllServerInfo(res);
-      }
+        if (req.url === "/admin/servers" && req.method === "GET") {
+          return this.getAllServerInfo(res);
+        }
 
-      if (req.url === "/admin/rooms" && req.method === "GET") {
-        return this.getAllRooms(res);
-      }
+        if (req.url === "/admin/rooms" && req.method === "GET") {
+          return this.getAllRooms(res);
+        }
 
-      if (req.url === "/admin/clients" && req.method === "GET") {
-        return this.getAllClients(res);
-      }
+        if (req.url === "/admin/clients" && req.method === "GET") {
+          return this.getAllClients(res);
+        }
 
-      // DELETE /admin/client/:id
-      if (req.url?.startsWith("/admin/client/") && req.method === "DELETE") {
-        const id = parseInt(req.url.split("/").pop()!);
-        return this.deleteClient(res, id);
-      }
+        // DELETE /admin/client/:id
+        if (req.url?.startsWith("/admin/client/") && req.method === "DELETE") {
+          const id = parseInt(req.url.split("/").pop()!);
+          return this.deleteClient(res, id);
+        }
 
-      // DELETE /admin/room/:id
-      if (req.url?.startsWith("/admin/room/") && req.method === "DELETE") {
-        const id = parseInt(req.url.split("/").pop()!);
-        return this.deleteRoom(res, id);
-      }
+        // DELETE /admin/room/:id
+        if (req.url?.startsWith("/admin/room/") && req.method === "DELETE") {
+          const id = parseInt(req.url.split("/").pop()!);
+          return this.deleteRoom(res, id);
+        }
 
-      // GET /admin/room/:id
-      if (req.url?.startsWith("/admin/room/") && req.method === "GET") {
-        const id = parseInt(req.url.split("/").pop()!);
-        return this.getRoom(res, id);
-      }
+        // GET /admin/room/:id
+        if (req.url?.startsWith("/admin/room/") && req.method === "GET") {
+          const id = parseInt(req.url.split("/").pop()!);
+          return this.getRoom(res, id);
+        }
 
-      // GET /admin/client/:id
-      if (req.url?.startsWith("/admin/client/") && req.method === "GET") {
-        const id = parseInt(req.url.split("/").pop()!);
-        return this.getClient(res, id);
-      }
+        // GET /admin/client/:id
+        if (req.url?.startsWith("/admin/client/") && req.method === "GET") {
+          const id = parseInt(req.url.split("/").pop()!);
+          return this.getClient(res, id);
+        }
 
-      // if any request other than this just ignore
-      res.writeHead(404).end("given "+req.url+" not found kindly check documentation");
-      return;
+        // if any request other than this just ignore
+        res
+          .writeHead(404)
+          .end("given " + req.url + " not found kindly check documentation");
+        return;
       }
     });
-    
   }
 
   private async loginAdmin(

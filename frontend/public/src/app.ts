@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindInputBoxes();
 });
 
-const websocketHost = hostname+"/ws";
+const websocketHost = hostname + "/ws";
 //connect with websocket
 
 console.log(websocketHost);
