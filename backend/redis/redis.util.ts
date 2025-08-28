@@ -3,7 +3,6 @@ export class RedisUtil {
   private readonly ROOM_KEY_INITIALIZER = "room:<id>";
   private readonly CHAT_ROOM_SET_KEY_INIT = "room:<id>:client";
   private readonly SERVER_SET_KEY = "server:<id>";
-
   constructor() {}
 
   public getClientkey(key: number | string) {

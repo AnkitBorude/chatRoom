@@ -16,6 +16,7 @@ import { RedisHelper } from "./redis/redis.helper";
 import { ServerInfo } from "./types";
 import { SERVER_STAT_UPDATE_INTERVAL_SEC } from "@shared/const";
 import { AdminController } from "./admin/admin.controller";
+import winston from "winston";
 export class ChatRoomWebsocket {
   private websocketServer: WebSocket.Server;
   private roomManager: RoomManager;
@@ -25,11 +26,13 @@ export class ChatRoomWebsocket {
   private serverId: string = crypto.randomUUID();
   private adminController: AdminController | undefined;
   private adminAccess: boolean = false;
+  private _logger;
   constructor(
     server: http.Server,
     client: RedisClientType,
     subscriber: RedisClientType,
   ) {
+    this._logger=this.createLogger();
     this.websocketServer = new WebSocket.Server({ server });
     this.redisHelper = new RedisHelper(client, subscriber);
     //generate New ServerId
@@ -56,12 +59,16 @@ export class ChatRoomWebsocket {
     this.redisHelper.addServer(this.serverId, info);
 
     this.websocketServer.on("listening", () => {
-      console.log("Websocket server is listening now");
+      this._logger.info("Websocket started Listenin");
     });
-    this.websocketServer.on("connection", (websocket) => {
+    this.websocketServer.on("connection", (websocket,req) => {
       // Client connected to server
       this.roomManager.createClient(websocket);
       this.connectionLifeMap.set(websocket, true);
+
+      //I can also store and limit number of socket connections from one ip and more
+
+      this._logger.info("New websocket connection ",{ip:this.extractIp(req)});
 
       websocket.on("pong", () => {
         this.connectionLifeMap.set(websocket, true);
@@ -79,7 +86,7 @@ export class ChatRoomWebsocket {
     });
 
     this.websocketServer.on("error", (error) => {
-      console.log("Something went wrong with server " + error.message);
+      this._logger.error("Something went wrong with server " + error.message);
     });
 
     const pingInterval = setInterval(() => {
@@ -90,10 +97,11 @@ export class ChatRoomWebsocket {
         } else {
           //if the connection is dead remove the socket and
           //cleanup the memory(remove client from the room if any)
-          console.log("Cleaning up dead connection");
+          this._logger.warn("Dead Connection Found no response since "+this.PING_INTERVAL_SEC * 1000);
           this.roomManager.removeClient(socket);
           socket.terminate();
           map.delete(socket);
+          this._logger.info("Removed Dead Connection ")
         }
       });
     }, this.PING_INTERVAL_SEC * 1000);
@@ -102,30 +110,29 @@ export class ChatRoomWebsocket {
       const stats = this.roomManager.getStatistics();
       try {
         await this.redisHelper.updateServerStats(this.serverId, stats);
+        this._logger.info("Server stats updated sucessfully",{stats});
       } catch (error) {
-        console.log("Error while updating server stats in redis");
+        this._logger.error("Error while sending stats update to redis "+(error as Error).name);
         console.error(error);
-      } finally {
-        console.log("Update Sent to server");
       }
     }, SERVER_STAT_UPDATE_INTERVAL_SEC * 1000);
 
     this.websocketServer.on("close", async () => {
-      console.log("Closing websocket server");
+      this._logger.warn("Closing websocket server");
       clearInterval(pingInterval);
       clearInterval(serverUpdateInterval);
       await this.redisHelper.removeServerId(this.serverId);
+      this._logger.info("Websocket server closed successfully");
     });
 
     if (this.adminController) {
-      console.log("Type of" + typeof this.adminController);
-      console.log("Container has admin endpoints accessible..");
-
+      this._logger.info("Server has authorized admin access");
       try {
         this.adminController.startListening(this.serverId);
         this.adminAccess = true;
       } catch (error) {
-        console.log(error);
+        this._logger.error("Error in admin access control error "+(error as Error).name);
+        console.error(error);
       }
     }
   }
@@ -136,7 +143,7 @@ export class ChatRoomWebsocket {
       parsedObj = JSON.parse(message) as BaseMessage;
     } catch (error) {
       const errora = error as Error;
-      console.error(error);
+      this._logger.error("Invalid incoming request message json type error "+errora.name);
       websocket.send(
         "Server Error during parsing message object " + errora.name,
       );
@@ -164,9 +171,9 @@ export class ChatRoomWebsocket {
 
       default:
         websocket.send(
-          JSON.stringify({ type: "error", message: "Invalid message type" }),
+          JSON.stringify({ type: "error", message: "Invalid message type request message type does not exists" }),
         );
-        console.log("Invalid Message type");
+        this._logger.error("Invalid requested Message format and message type");
     }
   }
 
@@ -174,6 +181,7 @@ export class ChatRoomWebsocket {
     return this.adminAccess;
   }
 
+  //to be called externally
   public async closeSocket() {
     const message = JSON.stringify({
       type: "error",
@@ -189,4 +197,29 @@ export class ChatRoomWebsocket {
     });
     this.websocketServer.close();
   }
+
+   private createLogger()
+    {
+       return winston.createLogger({
+            transports:[
+              new winston.transports.Console()
+            ],
+            format:winston.format.combine(
+              winston.format.label({label:'ChatRoomSocket'}),
+              winston.format.timestamp(),
+              winston.format.prettyPrint()
+            )
+          });
+    }
+
+      public extractIp(req: http.IncomingMessage):string
+      {
+        const ip = req.headers["x-real-ip"];
+        if (ip) {
+          //accept first duplicate header value only fallabck to 0.0.0.0
+          return ip[0] || "0.0.0.0";
+        } else {
+          return req.socket.remoteAddress || "0.0.0.0";
+        }
+      }
 }
