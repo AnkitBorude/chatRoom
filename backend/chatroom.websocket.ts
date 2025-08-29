@@ -62,13 +62,14 @@ export class ChatRoomWebsocket {
       this._logger.info("Websocket started Listenin");
     });
     this.websocketServer.on("connection", (websocket,req) => {
+      const ip=this.extractIp(req);
       // Client connected to server
-      this.roomManager.createClient(websocket);
+      this.roomManager.createClient(websocket,ip);
       this.connectionLifeMap.set(websocket, true);
 
       //I can also store and limit number of socket connections from one ip and more
 
-      this._logger.info("New websocket connection ",{ip:this.extractIp(req)});
+      this._logger.info("New websocket connection ",{ip});
 
       websocket.on("pong", () => {
         this.connectionLifeMap.set(websocket, true);

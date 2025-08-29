@@ -8,8 +8,21 @@ import {
 import { BaseMessage, RoomNotificationMessage } from "@shared/message.type";
 import { RequestType } from "@shared/request.enum";
 import crypto from "crypto";
+import winston from "winston";
 export class ChatRoomUtility {
-  constructor() {}
+  private _logger;
+  constructor() {
+    this._logger=winston.createLogger({
+          transports:[
+            new winston.transports.Console()
+          ],
+          format:winston.format.combine(
+            winston.format.label({label:'ChatRoomService'}),
+            winston.format.timestamp(),
+            winston.format.prettyPrint()
+          )
+        })
+  }
 
   public generateNewClientId() {
     return crypto.randomInt(CLIENT_ID_MIN, CLIENT_ID_MAX);
@@ -37,9 +50,11 @@ export class ChatRoomUtility {
   }
 
   public appendUUIDtoMessage(uuid: string, message: string) {
+    //here with each serialized json message we are appending the server uuid to filer loopback after subscription
     return message + ">" + uuid;
   }
   public retrieveUUIDandMessage(message: string): [string, string] {
+    //retrieving uuid and message from received message
     const lastIndex = message.lastIndexOf("}");
     if (message[lastIndex + 1] !== ">") {
       throw new Error("Invalid Message format");
@@ -59,4 +74,21 @@ export class ChatRoomUtility {
     );
     return JSON.stringify(message);
   }
+
+
+  public getLogger()
+    {
+      return {
+        warn:(message:string,clientId:number,type:RequestType)=>{
+          this._logger.warn(message,{clientId,type});
+        },
+         error:(message:string,clientId:number,type:RequestType)=>{
+           this._logger.error(message,{clientId,type});
+        },
+         info:(message:string,clientId:number,type:RequestType)=>{
+           this._logger.info(message,{clientId,type});
+        },
+        native:this._logger
+      }
+    }
 }
