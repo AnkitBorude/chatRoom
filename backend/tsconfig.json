@@ -3,11 +3,11 @@
   "compilerOptions": {
     "outDir": "../dist",         // compile to /app/backend/../dist → /app/dist
     "rootDir": "../",            // source root starts from project root (../)
-    "module": "commonjs",
+    "module": "nodenext",
     "baseUrl": "../",            // important for path mapping
     "paths": {
       "@shared/*": ["shared/*"]  // alias for shared folder
-    }
+    },
   },
   "include": [
     "../backend/**/*.ts",
