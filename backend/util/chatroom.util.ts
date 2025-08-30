@@ -12,16 +12,14 @@ import winston from "winston";
 export class ChatRoomUtility {
   private _logger;
   constructor() {
-    this._logger=winston.createLogger({
-          transports:[
-            new winston.transports.Console()
-          ],
-          format:winston.format.combine(
-            winston.format.json(),
-            winston.format.timestamp(),
-            winston.format.label({label:'ChatRoom'})
-          )
-        })
+    this._logger = winston.createLogger({
+      transports: [new winston.transports.Console()],
+      format: winston.format.combine(
+        winston.format.json(),
+        winston.format.timestamp(),
+        winston.format.label({ label: "ChatRoom" }),
+      ),
+    });
   }
 
   public generateNewClientId() {
@@ -75,20 +73,18 @@ export class ChatRoomUtility {
     return JSON.stringify(message);
   }
 
-
-  public getLogger()
-    {
-      return {
-        warn:(message:string,clientId:number,type:RequestType)=>{
-          this._logger.warn(message,{clientId,type});
-        },
-         error:(message:string,clientId:number,type:RequestType)=>{
-           this._logger.error(message,{clientId,type});
-        },
-         info:(message:string,clientId:number,type:RequestType)=>{
-           this._logger.info(message,{clientId,type});
-        },
-        native:this._logger
-      }
-    }
+  public getLogger() {
+    return {
+      warn: (message: string, clientId: number, type: RequestType) => {
+        this._logger.warn(message, { clientId, type });
+      },
+      error: (message: string, clientId: number, type: RequestType) => {
+        this._logger.error(message, { clientId, type });
+      },
+      info: (message: string, clientId: number, type: RequestType) => {
+        this._logger.info(message, { clientId, type });
+      },
+      native: this._logger,
+    };
+  }
 }

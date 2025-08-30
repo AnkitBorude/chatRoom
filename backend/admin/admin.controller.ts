@@ -31,9 +31,12 @@ export class AdminController {
     redisClient: RedisClientType,
   ) {
     this.adminHelper = new AdminHelperUtility();
-    this.tokenManager = new JWTTokenManager(AdminController.environment,this.adminHelper);
+    this.tokenManager = new JWTTokenManager(
+      AdminController.environment,
+      this.adminHelper,
+    );
     this.redis = new RedisAdminHelper(redisClient);
-    this.logger=this.adminHelper.getLogger();
+    this.logger = this.adminHelper.getLogger();
     setInterval(() => {
       if (this.rateLimitToken < this.RATE_LIMIT_MAX_CONCURRENT_TOKENS) {
         this.rateLimitToken++;
@@ -72,21 +75,20 @@ export class AdminController {
         if (!(await this.checkAuth(req, res))) return;
 
         if (req.url === "/admin/servers" && req.method === "GET") {
-         
           await this.getAllServerInfo(res);
-          this.logger.info("Server Info Fetched",req);
+          this.logger.info("Server Info Fetched", req);
           return;
         }
 
         if (req.url === "/admin/rooms" && req.method === "GET") {
-          await this.getAllRooms(res)
-          this.logger.info("All room info fetched",req);
+          await this.getAllRooms(res);
+          this.logger.info("All room info fetched", req);
           return;
         }
 
         if (req.url === "/admin/clients" && req.method === "GET") {
           await this.getAllClients(res);
-          this.logger.info("All client info fetched",req);
+          this.logger.info("All client info fetched", req);
           return;
         }
 
@@ -94,7 +96,7 @@ export class AdminController {
         if (req.url?.startsWith("/admin/client/") && req.method === "DELETE") {
           const id = parseInt(req.url.split("/").pop()!);
           await this.deleteClient(res, id);
-          this.logger.info("Delete Client bearing ID "+id,req);
+          this.logger.info("Delete Client bearing ID " + id, req);
           return;
         }
 
@@ -102,7 +104,7 @@ export class AdminController {
         if (req.url?.startsWith("/admin/room/") && req.method === "DELETE") {
           const id = parseInt(req.url.split("/").pop()!);
           await this.deleteRoom(res, id);
-          this.logger.info("Delete Room bearing ID "+id,req);
+          this.logger.info("Delete Room bearing ID " + id, req);
           return;
         }
 
@@ -110,7 +112,7 @@ export class AdminController {
         if (req.url?.startsWith("/admin/room/") && req.method === "GET") {
           const id = parseInt(req.url.split("/").pop()!);
           await this.getRoom(res, id);
-          this.logger.info("Fetched Room metdata bearing ID"+id,req);
+          this.logger.info("Fetched Room metdata bearing ID" + id, req);
           return;
         }
 
@@ -118,7 +120,7 @@ export class AdminController {
         if (req.url?.startsWith("/admin/client/") && req.method === "GET") {
           const id = parseInt(req.url.split("/").pop()!);
           await this.getClient(res, id);
-          this.logger.info("Fetched Client metadata of bearing ID"+id,req);
+          this.logger.info("Fetched Client metadata of bearing ID" + id, req);
           return;
         }
 
@@ -127,7 +129,7 @@ export class AdminController {
           .writeHead(404)
           .end("given " + req.url + " not found kindly check documentation");
 
-        this.logger.warn("Admin url "+req.url+"not found",req);
+        this.logger.warn("Admin url " + req.url + "not found", req);
 
         return;
       }
@@ -145,11 +147,11 @@ export class AdminController {
       console.log(err);
       if (String(err) === "413") {
         // payload was too large or invalid JSON
-        this.logger.error("Payload was too large ",req);
+        this.logger.error("Payload was too large ", req);
         res.writeHead(413).end("payload was too large ");
         return;
       }
-      this.logger.error("Invalid JSON Format ",req);
+      this.logger.error("Invalid JSON Format ", req);
       res.writeHead(400).end("invalid JSON");
       return;
     }
@@ -161,7 +163,7 @@ export class AdminController {
       const token = this.tokenManager.signToken(body.username, this.serverId);
       return res.end(JSON.stringify({ token }));
     }
-    this.logger.warn("Invalid Credentials",req);
+    this.logger.warn("Invalid Credentials", req);
     res.writeHead(401).end("invalid credentials");
   }
 
@@ -227,11 +229,14 @@ export class AdminController {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<boolean> {
-    const ip=this.adminHelper.extractIp(req);
+    const ip = this.adminHelper.extractIp(req);
     //global rate limit
     const globalCount = await this.redis.getGlobalRateLimit(ip);
     if (Number(globalCount[0]) > Number(MAX_REQUEST_WITHIN_1_MIN)) {
-      this.logger.error("Global rate limit broked, cool-off "+globalCount[1].toString(),req);
+      this.logger.error(
+        "Global rate limit broked, cool-off " + globalCount[1].toString(),
+        req,
+      );
       res
         .writeHead(429, {
           "retry-after": globalCount[1].toString(),
@@ -241,7 +246,7 @@ export class AdminController {
     }
     //local rate limit
     if (this.rateLimitToken <= 0) {
-      this.logger.warn("Container Rate limit broken",req);
+      this.logger.warn("Container Rate limit broken", req);
       res.writeHead(429).end("Rate limit broken kindly retry after some time");
       return false;
     }

@@ -4,8 +4,11 @@ import http from "http";
 import { AdminHelperUtility } from "./admin.util";
 export class JWTTokenManager {
   private logger;
-  constructor(private env: Record<TOKENTYPE, string>,private adminHelper:AdminHelperUtility) {
-    this.logger=adminHelper.getLogger();
+  constructor(
+    private env: Record<TOKENTYPE, string>,
+    private adminHelper: AdminHelperUtility,
+  ) {
+    this.logger = adminHelper.getLogger();
   }
 
   public isAuthenticated(req: http.IncomingMessage): boolean {
@@ -16,9 +19,8 @@ export class JWTTokenManager {
       jwt.verify(token, this.env.JWT_SECRET);
       return true;
     } catch (error) {
-
-      this.logger.error("Token Error "+(error as Error).message,req);
-      console.error(error)
+      this.logger.error("Token Error " + (error as Error).message, req);
+      console.error(error);
       return false;
     }
   }

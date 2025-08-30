@@ -1,20 +1,17 @@
 import http from "http";
 import winston from "winston";
 export class AdminHelperUtility {
-
   private _logger;
 
   constructor() {
-    this._logger=winston.createLogger({
-      transports:[
-        new winston.transports.Console()
-      ],
-      format:winston.format.combine(
+    this._logger = winston.createLogger({
+      transports: [new winston.transports.Console()],
+      format: winston.format.combine(
         winston.format.json(),
         winston.format.timestamp(),
-        winston.format.label({label:'Admin'})
-      )
-    })
+        winston.format.label({ label: "Admin" }),
+      ),
+    });
   }
 
   public getBody(req: http.IncomingMessage): Promise<Record<string, string>> {
@@ -39,9 +36,7 @@ export class AdminHelperUtility {
     });
   }
 
-
-  public extractIp(req: http.IncomingMessage):string
-  {
+  public extractIp(req: http.IncomingMessage): string {
     const ip = req.headers["x-real-ip"];
     if (ip) {
       //accept first duplicate header value only fallabck to 0.0.0.0
@@ -51,18 +46,19 @@ export class AdminHelperUtility {
     }
   }
 
-  public getLogger()
-  {
+  public getLogger() {
     return {
-      warn:(message:string,req: http.IncomingMessage)=>{
-        this._logger.warn(req.url+" "+message,{ip:this.extractIp(req)});
+      warn: (message: string, req: http.IncomingMessage) => {
+        this._logger.warn(req.url + " " + message, { ip: this.extractIp(req) });
       },
-       error:(message:string,req: http.IncomingMessage)=>{
-        this._logger.error(req.url+" "+message,{ip:this.extractIp(req)});
+      error: (message: string, req: http.IncomingMessage) => {
+        this._logger.error(req.url + " " + message, {
+          ip: this.extractIp(req),
+        });
       },
-       info:(message:string,req: http.IncomingMessage)=>{
-        this._logger.warn(req.url+" "+message,{ip:this.extractIp(req)});
-      }
-    }
+      info: (message: string, req: http.IncomingMessage) => {
+        this._logger.warn(req.url + " " + message, { ip: this.extractIp(req) });
+      },
+    };
   }
 }

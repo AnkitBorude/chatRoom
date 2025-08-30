@@ -5,20 +5,15 @@ import { RedisClientType } from "redis";
 import winston from "winston";
 const server = http.createServer(requestHandler);
 
-const logger=winston.createLogger(
-  {
-    level:'http',
-    transports:[
-      new winston.transports.Console()
-    ],
-    format:winston.format.combine(
-      winston.format.json(),
-      winston.format.label({label:'HTTP'}),
-      winston.format.timestamp(),
-    )
-  }
-);
-
+const logger = winston.createLogger({
+  level: "http",
+  transports: [new winston.transports.Console()],
+  format: winston.format.combine(
+    winston.format.json(),
+    winston.format.label({ label: "HTTP" }),
+    winston.format.timestamp(),
+  ),
+});
 
 let chatRoomInstance: ChatRoomWebsocket;
 const redisCommandClient: RedisClientWrapper = new RedisClientWrapper(
@@ -62,9 +57,8 @@ function requestHandler(
 
   // 🔒 Placeholder: If you have AdminController, you can check here
   if (req.url?.startsWith("/admin")) {
-    
     if (!chatRoomInstance.hasAdminAccess) {
-      logger.warn("Access not configured to "+req.url);
+      logger.warn("Access not configured to " + req.url);
       res.writeHead(404).end("Server does not have admin access configured");
       return;
     }
@@ -73,7 +67,7 @@ function requestHandler(
 
   // Catch-all 404
   res.writeHead(404).end("Route not found");
-  logger.warn("Route not found "+req.url);
+  logger.warn("Route not found " + req.url);
   return;
 }
 server.listen(3000, async () => {
@@ -110,7 +104,9 @@ async function gracefulShutdown(signal: string) {
 
       try {
         // Close all active connections
-        logger.warn("Closing all chatroom and notifying users and sideeffect cleanup");
+        logger.warn(
+          "Closing all chatroom and notifying users and sideeffect cleanup",
+        );
         await chatRoomInstance.closeSocket();
         // Close Redis connection
 

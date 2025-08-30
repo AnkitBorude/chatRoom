@@ -31,7 +31,7 @@ export class RoomManager {
 
     this.rooms = new Map();
     this.roomUtility = new ChatRoomUtility();
-    this._logger=this.roomUtility.getLogger();
+    this._logger = this.roomUtility.getLogger();
     this.redis = redis;
     this.serverId = serverId;
     this.iMessageCounter = this.sMessageCounter = 0;
@@ -51,7 +51,7 @@ export class RoomManager {
       lastUpdatedAt: Date.now(),
     };
   }
-  async createClient(ws: WebSocket,ip:string) {
+  async createClient(ws: WebSocket, ip: string) {
     const tmp_id = this.roomUtility.generateNewClientId();
     this.clientsToWs.set(tmp_id, ws);
     this.wsToClientId.set(ws, tmp_id);
@@ -63,7 +63,12 @@ export class RoomManager {
     try {
       await this.redis.createNewClient(client);
     } catch (error) {
-      this._logger.error("Error whiles storing new client metadata in redis "+(error as Error).message,client.id,RequestType.CREATE);
+      this._logger.error(
+        "Error whiles storing new client metadata in redis " +
+          (error as Error).message,
+        client.id,
+        RequestType.CREATE,
+      );
     }
 
     const responseString =
@@ -80,7 +85,11 @@ export class RoomManager {
     });
 
     ws.send(responseString);
-    this._logger.info("Client Id generated for socket connection from  ip "+ip,client.id,RequestType.CREATE);
+    this._logger.info(
+      "Client Id generated for socket connection from  ip " + ip,
+      client.id,
+      RequestType.CREATE,
+    );
   }
 
   public async createRoom(ws: WebSocket, message: CreateMessage) {
@@ -88,7 +97,7 @@ export class RoomManager {
     const client = await this.getClientBySocket(ws);
     if (!client) {
       ws.send(this.roomUtility.createNotFoundMessage());
-      this._logger.warn("Unknown Client",0,RequestType.CREATE);
+      this._logger.warn("Unknown Client", 0, RequestType.CREATE);
       return;
     }
 
@@ -113,7 +122,11 @@ export class RoomManager {
       });
     ws.send(responseString);
 
-    this._logger.info("Room Created Successfully Room Data "+JSON.stringify(room),client.id,RequestType.CREATE);
+    this._logger.info(
+      "Room Created Successfully Room Data " + JSON.stringify(room),
+      client.id,
+      RequestType.CREATE,
+    );
     await this.joinRoom(ws, room.id);
 
     this.totalRoomsCreated++;
@@ -124,7 +137,7 @@ export class RoomManager {
 
     if (!client) {
       ws.send(this.roomUtility.createNotFoundMessage());
-      this._logger.warn("Unknown Client",0,RequestType.RENAME);
+      this._logger.warn("Unknown Client", 0, RequestType.RENAME);
       return;
     }
     const previousname = client.name;
@@ -139,7 +152,11 @@ export class RoomManager {
 
     ws.send(clientResponse);
 
-    this._logger.info(`username updated from ${previousname} to ${message.username}`,client.id,RequestType.RENAME);
+    this._logger.info(
+      `username updated from ${previousname} to ${message.username}`,
+      client.id,
+      RequestType.RENAME,
+    );
     const roomIdofClient = await this.isPartofAlocalRoom(client);
 
     if (roomIdofClient) {
@@ -172,7 +189,7 @@ export class RoomManager {
     if (!client) {
       //send the error code back to ws
       ws.send(this.roomUtility.createNotFoundMessage());
-      this._logger.warn("Unknown Client",0,RequestType.JOIN);
+      this._logger.warn("Unknown Client", 0, RequestType.JOIN);
       return;
     }
     //check whether the passed roomId exists
@@ -188,13 +205,21 @@ export class RoomManager {
         roomName: "NOT FOUND ZERO ROOM",
       });
       ws.send(response);
-      this._logger.warn("Requested room not found room id "+roomIdToJoin,client.id,RequestType.JOIN);
+      this._logger.warn(
+        "Requested room not found room id " + roomIdToJoin,
+        client.id,
+        RequestType.JOIN,
+      );
       return;
     }
 
     const roomId = await this.isPartofAlocalRoom(client);
     if (roomId) {
-      this._logger.info("Client is part of a existing room,leaving previous room "+roomId,client.id,RequestType.JOIN);
+      this._logger.info(
+        "Client is part of a existing room,leaving previous room " + roomId,
+        client.id,
+        RequestType.JOIN,
+      );
       //is part of any room leave previous room
       await this.leaveRoom(ws);
     }
@@ -213,7 +238,9 @@ export class RoomManager {
         const incomingMessage =
           this.roomUtility.retrieveUUIDandMessage(message);
         if (incomingMessage[0] !== this.serverId) {
-          this._logger.native.info("Message Recieved from global pipeline for room id "+roomIdToJoin)
+          this._logger.native.info(
+            "Message Recieved from global pipeline for room id " + roomIdToJoin,
+          );
           this.broadcastMessage(roomIdToJoin, incomingMessage[1]);
         }
       });
@@ -237,7 +264,11 @@ export class RoomManager {
       );
     ws.send(joinMessageToUser);
 
-    this._logger.info("Client successfully joined room id "+roomIdToJoin,client.id,RequestType.JOIN);
+    this._logger.info(
+      "Client successfully joined room id " + roomIdToJoin,
+      client.id,
+      RequestType.JOIN,
+    );
     this.broadcastLocalRoomNotification(
       roomIdToJoin,
       client.id,
@@ -259,7 +290,7 @@ export class RoomManager {
       const rClient = await this.getClientBySocket(ws);
       if (!rClient) {
         ws.send(this.roomUtility.createNotFoundMessage());
-        this._logger.warn("Unknown Client",0,RequestType.LEAVE);
+        this._logger.warn("Unknown Client", 0, RequestType.LEAVE);
         return;
       }
       client = rClient;
@@ -268,7 +299,11 @@ export class RoomManager {
 
     if (!currentRoomId) {
       //not part of any room so cannot leave invalid command
-      this._logger.warn("Client not part of any room thus cannot leave room",client.id,RequestType.LEAVE);
+      this._logger.warn(
+        "Client not part of any room thus cannot leave room",
+        client.id,
+        RequestType.LEAVE,
+      );
       return;
     }
     const roomMeta = await this.isRoomExists(currentRoomId);
@@ -285,7 +320,13 @@ export class RoomManager {
     if (!sizeOfRoom || sizeOfRoom <= 0) {
       //no one in local room
 
-      this._logger.info("Room "+currentRoomId+" is empty LOCALLY , deleting empty room LOCALLY",client.id,RequestType.LEAVE);
+      this._logger.info(
+        "Room " +
+          currentRoomId +
+          " is empty LOCALLY , deleting empty room LOCALLY",
+        client.id,
+        RequestType.LEAVE,
+      );
       await this.redis.unSubscribeToChatRoomPipeline(currentRoomId);
       this.rooms.delete(currentRoomId);
       deletedLocalRoom = true;
@@ -295,7 +336,13 @@ export class RoomManager {
     //the cardinality of set of users in the room is ultimate source of truth
     if (Number(globalRoomSpaceSize[1]) <= 0) {
       await this.redis.removeEmptyRoom(currentRoomId);
-      this._logger.info("Room "+currentRoomId+" is empty GLOBALLY , deleting empty room GLOBALLY",client.id,RequestType.LEAVE);
+      this._logger.info(
+        "Room " +
+          currentRoomId +
+          " is empty GLOBALLY , deleting empty room GLOBALLY",
+        client.id,
+        RequestType.LEAVE,
+      );
       deletedGlobalRoom = true;
     }
 
@@ -341,14 +388,18 @@ export class RoomManager {
 
     ws.send(leftNotificationToUser);
 
-    this._logger.info("Successfully Left room data "+JSON.stringify(roomMeta),client.id,RequestType.LEAVE);
+    this._logger.info(
+      "Successfully Left room data " + JSON.stringify(roomMeta),
+      client.id,
+      RequestType.LEAVE,
+    );
   }
 
   public async sendMessage(ws: WebSocket, messageObj: ChatMessage) {
     const client = await this.getClientBySocket(ws);
     if (!client) {
       ws.send(this.roomUtility.createNotFoundMessage());
-      this._logger.warn("Unknown Client",0,RequestType.MESSAGE);
+      this._logger.warn("Unknown Client", 0, RequestType.MESSAGE);
       return;
     }
     const messageId = messageObj.id ?? "0";
@@ -356,14 +407,24 @@ export class RoomManager {
     const currentRoomId = await this.isPartofAlocalRoom(client);
     if (!currentRoomId) {
       //not part of any room cannot send message ignore
-      this._logger.warn("Client is not part of any room thus cannot send message ",client.id,RequestType.MESSAGE);
+      this._logger.warn(
+        "Client is not part of any room thus cannot send message ",
+        client.id,
+        RequestType.MESSAGE,
+      );
       return;
     }
     const room = await this.isRoomExists(currentRoomId);
 
     if (!room) {
       //the room does not exists so cannot send message ignore
-      this._logger.warn("Requested room id "+currentRoomId+" does not exists, cannot send message ",client.id,RequestType.MESSAGE);
+      this._logger.warn(
+        "Requested room id " +
+          currentRoomId +
+          " does not exists, cannot send message ",
+        client.id,
+        RequestType.MESSAGE,
+      );
       return;
     }
 
@@ -375,7 +436,11 @@ export class RoomManager {
         RequestType.MESSAGE,
       );
       ws.send(JSON.stringify(notification));
-        this._logger.warn("Requested room is empty, cannot send message",client.id,RequestType.MESSAGE);
+      this._logger.warn(
+        "Requested room is empty, cannot send message",
+        client.id,
+        RequestType.MESSAGE,
+      );
       return;
     }
 
@@ -401,7 +466,11 @@ export class RoomManager {
         { messageId },
       );
     ws.send(JSON.stringify(successNotificationToClient));
-    this._logger.info("Message broadcasted Successfully",client.id,RequestType.MESSAGE);
+    this._logger.info(
+      "Message broadcasted Successfully",
+      client.id,
+      RequestType.MESSAGE,
+    );
     this.sMessageCounter++;
   }
 
@@ -419,7 +488,7 @@ export class RoomManager {
       await this.redis.removeClient(client.id);
       this.wsToClientId.delete(ws);
       this.clientsToWs.delete(client.id);
-      this._logger.native.info("Client removed successfully",client.id);
+      this._logger.native.info("Client removed successfully", client.id);
     }
   }
 
@@ -515,7 +584,10 @@ export class RoomManager {
         this.clientsToWs.get(otherClientId)?.send(message);
       }
     });
-    this._logger.native.info("A Message broadcasted on local room id "+roomId,{clientId:senderId});
+    this._logger.native.info(
+      "A Message broadcasted on local room id " + roomId,
+      { clientId: senderId },
+    );
   }
 
   private async broadcastNotificationOnGlobal(
@@ -526,9 +598,16 @@ export class RoomManager {
     message = this.roomUtility.appendUUIDtoMessage(this.serverId, message);
     try {
       await this.redis.publishMessage(roomId, message);
-      this._logger.native.info("A Message published globally on room id "+roomId);
+      this._logger.native.info(
+        "A Message published globally on room id " + roomId,
+      );
     } catch (error) {
-      this._logger.native.error("error during publishing notification on room id "+roomId+"redis error "+(error as Error).message);
+      this._logger.native.error(
+        "error during publishing notification on room id " +
+          roomId +
+          "redis error " +
+          (error as Error).message,
+      );
     }
   }
 
@@ -567,6 +646,6 @@ export class RoomManager {
 
     this.rooms.delete(roomId);
 
-    this._logger.native.warn("Removed local room completely room id"+roomId);
+    this._logger.native.warn("Removed local room completely room id" + roomId);
   }
 }

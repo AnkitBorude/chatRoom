@@ -32,7 +32,7 @@ export class ChatRoomWebsocket {
     client: RedisClientType,
     subscriber: RedisClientType,
   ) {
-    this._logger=this.createLogger();
+    this._logger = this.createLogger();
     this.websocketServer = new WebSocket.Server({ server });
     this.redisHelper = new RedisHelper(client, subscriber);
     //generate New ServerId
@@ -61,18 +61,17 @@ export class ChatRoomWebsocket {
     this.websocketServer.on("listening", () => {
       this._logger.info("Websocket started Listenin");
     });
-    this.websocketServer.on("connection", (websocket,req) => {
-      const ip=this.extractIp(req);
+    this.websocketServer.on("connection", (websocket, req) => {
+      const ip = this.extractIp(req);
       // Client connected to server
-      this.roomManager.createClient(websocket,ip);
+      this.roomManager.createClient(websocket, ip);
       this.connectionLifeMap.set(websocket, true);
 
       //I can also store and limit number of socket connections from one ip and more
 
-      this._logger.info("New websocket connection ",{ip});
+      this._logger.info("New websocket connection ", { ip });
 
       websocket.on("pong", () => {
-        console.log("Pong Receieve live :"+this.connectionLifeMap.get(websocket));
         this.connectionLifeMap.set(websocket, true);
       });
 
@@ -99,11 +98,14 @@ export class ChatRoomWebsocket {
         } else {
           //if the connection is dead remove the socket and
           //cleanup the memory(remove client from the room if any)
-          this._logger.warn("Dead Connection Found no response since "+this.PING_INTERVAL_SEC * 1000);
+          this._logger.warn(
+            "Dead Connection Found no response since " +
+              this.PING_INTERVAL_SEC * 1000,
+          );
           this.roomManager.removeClient(socket);
           socket.terminate();
           map.delete(socket);
-          this._logger.info("Removed Dead Connection ")
+          this._logger.info("Removed Dead Connection ");
         }
       });
     }, this.PING_INTERVAL_SEC * 1000);
@@ -115,7 +117,9 @@ export class ChatRoomWebsocket {
         this._logger.info("Server stats updated sucessfully");
         this._logger.info(stats);
       } catch (error) {
-        this._logger.error("Error while sending stats update to redis "+(error as Error).name);
+        this._logger.error(
+          "Error while sending stats update to redis " + (error as Error).name,
+        );
         console.error(error);
       }
     }, SERVER_STAT_UPDATE_INTERVAL_SEC * 1000);
@@ -134,7 +138,9 @@ export class ChatRoomWebsocket {
         this.adminController.startListening(this.serverId);
         this.adminAccess = true;
       } catch (error) {
-        this._logger.error("Error in admin access control error "+(error as Error).name);
+        this._logger.error(
+          "Error in admin access control error " + (error as Error).name,
+        );
         console.error(error);
       }
     }
@@ -146,7 +152,9 @@ export class ChatRoomWebsocket {
       parsedObj = JSON.parse(message) as BaseMessage;
     } catch (error) {
       const errora = error as Error;
-      this._logger.error("Invalid incoming request message json type error "+errora.name);
+      this._logger.error(
+        "Invalid incoming request message json type error " + errora.name,
+      );
       websocket.send(
         "Server Error during parsing message object " + errora.name,
       );
@@ -174,7 +182,11 @@ export class ChatRoomWebsocket {
 
       default:
         websocket.send(
-          JSON.stringify({ type: "error", message: "Invalid message type request message type does not exists" }),
+          JSON.stringify({
+            type: "error",
+            message:
+              "Invalid message type request message type does not exists",
+          }),
         );
         this._logger.error("Invalid requested Message format and message type");
     }
@@ -201,28 +213,24 @@ export class ChatRoomWebsocket {
     this.websocketServer.close();
   }
 
-   private createLogger()
-    {
-       return winston.createLogger({
-            transports:[
-              new winston.transports.Console()
-            ],
-            format:winston.format.combine(
-              winston.format.json(),
-              winston.format.label({label:'ChatRoomSocket'}),
-              winston.format.timestamp(),
-            )
-          });
-    }
+  private createLogger() {
+    return winston.createLogger({
+      transports: [new winston.transports.Console()],
+      format: winston.format.combine(
+        winston.format.json(),
+        winston.format.label({ label: "ChatRoomSocket" }),
+        winston.format.timestamp(),
+      ),
+    });
+  }
 
-      public extractIp(req: http.IncomingMessage):string
-      {
-        const ip = req.headers["x-real-ip"];
-        if (ip) {
-          //accept first duplicate header value only fallabck to 0.0.0.0
-          return ip[0] || "0.0.0.0";
-        } else {
-          return req.socket.remoteAddress || "0.0.0.0";
-        }
-      }
+  public extractIp(req: http.IncomingMessage): string {
+    const ip = req.headers["x-real-ip"];
+    if (ip) {
+      //accept first duplicate header value only fallabck to 0.0.0.0
+      return ip[0] || "0.0.0.0";
+    } else {
+      return req.socket.remoteAddress || "0.0.0.0";
+    }
+  }
 }

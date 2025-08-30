@@ -18,7 +18,7 @@ export class RedisClientWrapper {
   private _logger: winston.Logger;
 
   constructor(name?: string) {
-    this._logger=this.createLogger();
+    this._logger = this.createLogger();
     if (name) {
       this._name = name;
     }
@@ -30,14 +30,20 @@ export class RedisClientWrapper {
       });
       this.client.on("error", this.handleError);
       this.client.on("connect", () => {
-        this._logger.info("Redis Connected Successfully ",{connection:this._name});
+        this._logger.info("Redis Connected Successfully ", {
+          connection: this._name,
+        });
       });
       this.client.on("reconnecting", () => {
         if (this.RETRY <= 0) {
-          this._logger.error("Retried too many time Exiting process",{connection:this._name});
+          this._logger.error("Retried too many time Exiting process", {
+            connection: this._name,
+          });
           process.exit(-1);
         }
-        this._logger.info("Redis Reconnecting... retry "+this.RETRY,{connection:this._name});
+        this._logger.info("Redis Reconnecting... retry " + this.RETRY, {
+          connection: this._name,
+        });
         this.RETRY--;
       });
     }
@@ -45,7 +51,9 @@ export class RedisClientWrapper {
 
   public async connect(): Promise<undefined | RedisClientType> {
     if (this.client.isOpen) {
-      this._logger.warn("Redis Connection is already open ",{connection:this._name});
+      this._logger.warn("Redis Connection is already open ", {
+        connection: this._name,
+      });
       return;
     }
     try {
@@ -66,27 +74,35 @@ export class RedisClientWrapper {
   }
 
   private startHeartbeat(interval: number) {
-    this._logger.info("Started Redis Heartbeat with interval of "+interval,{connection:this._name});
+    this._logger.info("Started Redis Heartbeat with interval of " + interval, {
+      connection: this._name,
+    });
     this.pingInterval = setInterval(
       async () => await this.pingClient(),
       interval,
     );
   }
   private handleError(error: Error) {
-    this._logger.error("Error while connecting to redis.. message "+error.message,{connection:this._name});
+    this._logger.error(
+      "Error while connecting to redis.. message " + error.message,
+      { connection: this._name },
+    );
   }
 
   private async pingClient() {
     try {
       await this.client!.ping();
     } catch (error) {
-
-      this._logger.error("Redis Error in Network pinging failed",{connection:this._name});
+      this._logger.error("Redis Error in Network pinging failed", {
+        connection: this._name,
+      });
       this.handleError(error as Error);
       this.client!.destroy();
       clearInterval(this.pingInterval);
-      
-      this._logger.warn("Retrying to reconnect again to redis ",{connection:this._name});
+
+      this._logger.warn("Retrying to reconnect again to redis ", {
+        connection: this._name,
+      });
       await this.connect();
     }
   }
@@ -98,17 +114,14 @@ export class RedisClientWrapper {
     }
   }
 
-  private createLogger()
-  {
-     return winston.createLogger({
-          transports:[
-            new winston.transports.Console()
-          ],
-          format:winston.format.combine(
-            winston.format.json(),
-            winston.format.timestamp(),
-            winston.format.label({label:'Redis'})
-          )
-        });
+  private createLogger() {
+    return winston.createLogger({
+      transports: [new winston.transports.Console()],
+      format: winston.format.combine(
+        winston.format.json(),
+        winston.format.timestamp(),
+        winston.format.label({ label: "Redis" }),
+      ),
+    });
   }
 }
