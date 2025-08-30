@@ -68,7 +68,7 @@ const buttonHandlerMap: ButtonHandlerMap = {
 };
 
 let changeUsernameBtn: HTMLElement;
-
+const notificationSound = new Audio("/assets/notification.mp3");
 export function bindInputBoxes() {
   const isAllBinded = Object.values(InputelementMap).every((element) => {
     return element ? true : false;
@@ -110,6 +110,7 @@ export function appendRecievedMessageBubble(
   wrapper.scrollIntoView();
   MESSAGE_BOX.appendChild(wrapper);
   MESSAGE_BOX.scrollTop = MESSAGE_BOX.scrollHeight;
+  notificationSound.play();
 }
 
 export function appendOwnMessageBubble(messageText: string) {
@@ -163,6 +164,9 @@ export function appendInfoAlert(message: string) {
 
   messageBox.appendChild(alertDiv);
   messageBox.scrollTop = messageBox.scrollHeight;
+  notificationSound.volume=0.5;
+  notificationSound.play();
+  notificationSound.volume=1;
 }
 
 export function updateRoomDetailsElementValue(
