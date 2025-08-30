@@ -10,9 +10,9 @@ export class AdminHelperUtility {
         new winston.transports.Console()
       ],
       format:winston.format.combine(
-        winston.format.label({label:'Admin'}),
+        winston.format.json(),
         winston.format.timestamp(),
-        winston.format.prettyPrint()
+        winston.format.label({label:'Admin'})
       )
     })
   }

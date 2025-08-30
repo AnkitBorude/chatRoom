@@ -17,9 +17,9 @@ export class ChatRoomUtility {
             new winston.transports.Console()
           ],
           format:winston.format.combine(
-            winston.format.label({label:'ChatRoomService'}),
+            winston.format.json(),
             winston.format.timestamp(),
-            winston.format.prettyPrint()
+            winston.format.label({label:'ChatRoom'})
           )
         })
   }

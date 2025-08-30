@@ -11,7 +11,11 @@ const logger=winston.createLogger(
     transports:[
       new winston.transports.Console()
     ],
-    format:winston.format.prettyPrint()
+    format:winston.format.combine(
+      winston.format.json(),
+      winston.format.label({label:'HTTP'}),
+      winston.format.timestamp(),
+    )
   }
 );
 
@@ -38,7 +42,7 @@ function requestHandler(
     };
 
     try {
-      console.log("Health Check");
+      console.log("Health Check by container");
       res
         .writeHead(200, { "Content-Type": "application/json" })
         .end(JSON.stringify(healthcheck));
@@ -106,6 +110,7 @@ async function gracefulShutdown(signal: string) {
 
       try {
         // Close all active connections
+        logger.warn("Closing all chatroom and notifying users and sideeffect cleanup");
         await chatRoomInstance.closeSocket();
         // Close Redis connection
 

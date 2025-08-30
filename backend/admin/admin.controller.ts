@@ -5,10 +5,7 @@ import { AdminHelperUtility } from "./admin.util";
 import { RedisAdminHelper } from "backend/redis/admin/redis.admin";
 import { RedisClientType } from "redis";
 import { MAX_REQUEST_WITHIN_1_MIN } from "@shared/const";
-import * as dotenv from "dotenv";
-import path from "path";
 //local only
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 export class AdminController {
   private serverId: string = "";
   private static REQUIRED_ENV_VARIABLES = [

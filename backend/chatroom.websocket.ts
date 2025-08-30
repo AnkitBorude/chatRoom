@@ -72,6 +72,7 @@ export class ChatRoomWebsocket {
       this._logger.info("New websocket connection ",{ip});
 
       websocket.on("pong", () => {
+        console.log("Pong Receieve live :"+this.connectionLifeMap.get(websocket));
         this.connectionLifeMap.set(websocket, true);
       });
 
@@ -111,7 +112,8 @@ export class ChatRoomWebsocket {
       const stats = this.roomManager.getStatistics();
       try {
         await this.redisHelper.updateServerStats(this.serverId, stats);
-        this._logger.info("Server stats updated sucessfully",{stats});
+        this._logger.info("Server stats updated sucessfully");
+        this._logger.info(stats);
       } catch (error) {
         this._logger.error("Error while sending stats update to redis "+(error as Error).name);
         console.error(error);
@@ -206,9 +208,9 @@ export class ChatRoomWebsocket {
               new winston.transports.Console()
             ],
             format:winston.format.combine(
+              winston.format.json(),
               winston.format.label({label:'ChatRoomSocket'}),
               winston.format.timestamp(),
-              winston.format.prettyPrint()
             )
           });
     }

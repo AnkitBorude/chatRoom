@@ -210,10 +210,10 @@ export class RoomManager {
       //attach publishMent to room
       //assumming no message burst in that case we would require a queue
       this.redis.subscribeToChatRoomPipeline(roomIdToJoin, (message) => {
-        this._logger.native.info("Message Recieved from global pipeline for room id "+roomIdToJoin)
         const incomingMessage =
           this.roomUtility.retrieveUUIDandMessage(message);
         if (incomingMessage[0] !== this.serverId) {
+          this._logger.native.info("Message Recieved from global pipeline for room id "+roomIdToJoin)
           this.broadcastMessage(roomIdToJoin, incomingMessage[1]);
         }
       });
